@@ -1,0 +1,22 @@
+# Environments
+venv/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing / logs
+logs/
+*.log
+
+# Models / large files
+# Note: we are allowing .pkl for now since Render needs it, but usually deep learning weights should be ignored.
+# *.pkl
+
+# Datasets
+*.csv
+dataset/

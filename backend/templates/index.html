@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UPI Fraud Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4e73df;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #2e59d9;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .approved { background: #d4edda; color: #155724; }
+        .blocked { background: #f8d7da; color: #721c24; }
+        .otp { background: #fff3cd; color: #856404; }
+
+        .loading {
+            text-align: center;
+            margin-top: 15px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>UPI Fraud Detection</h2>
+
+    <input type="text" id="user_id" placeholder="Enter User ID" required>
+    <input type="number" id="amount" placeholder="Enter Amount" required>
+
+    <button onclick="detectFraud()">Proceed Transaction</button>
+
+    <div class="loading" id="loading"></div>
+    <div id="output"></div>
+</div>
+
+<script>
+async function detectFraud() {
+
+    const user_id = document.getElementById("user_id").value;
+    const amount = parseFloat(document.getElementById("amount").value);
+
+    if (!user_id || !amount) {
+        alert("Please enter User ID and Amount");
+        return;
+    }
+
+    document.getElementById("loading").innerText = "Processing transaction...";
+    document.getElementById("output").innerHTML = "";
+
+    const transaction_id = "TX" + Date.now();
+    const now = new Date();
+    const hour = now.getHours();
+    const device_id = navigator.userAgent;
+
+    navigator.geolocation.getCurrentPosition(async function(position) {
+
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        const data = {
+            transaction_id: transaction_id,
+            user_id: user_id,
+            amount: amount,
+            hour: hour,
+            device_id: device_id,
+            latitude: latitude,
+            longitude: longitude,
+
+            ml_features: {
+                Time: 50000,
+                V1: 0, V2: 0, V3: 0, V4: 0, V5: 0,
+                V6: 0, V7: 0, V8: 0, V9: 0, V10: 0,
+                V11: 0, V12: 0, V13: 0, V14: 0,
+                V15: 0, V16: 0, V17: 0, V18: 0,
+                V19: 0, V20: 0, V21: 0, V22: 0,
+                V23: 0, V24: 0, V25: 0, V26: 0,
+                V27: 0, V28: 0,
+                Amount: amount
+            }
+        };
+
+        const response = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        document.getElementById("loading").innerText = "";
+
+        let className = "";
+        if (result.decision === "BLOCKED") className = "blocked";
+        else if (result.decision.includes("OTP")) className = "otp";
+        else className = "approved";
+
+        document.getElementById("output").innerHTML = `
+            <div class="result ${className}">
+                Decision: ${result.decision} <br><br>
+                Risk Score: ${result.risk_score}% <br>
+                Location Jump: ${result.distance_km} km
+            </div>
+        `;
+
+    }, function(error) {
+        document.getElementById("loading").innerText = "";
+        alert("Location permission is required for fraud detection.");
+    });
+}
+</script>
+
+</body>
+</html>

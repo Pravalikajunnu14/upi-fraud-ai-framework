@@ -1,0 +1,79 @@
+{
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "roc_auc": 1.0,
+  "feature_importance": [
+    {
+      "feature": "amount_to_avg_ratio",
+      "importance": 0.9067
+    },
+    {
+      "feature": "transaction_frequency",
+      "importance": 0.077
+    },
+    {
+      "feature": "hour",
+      "importance": 0.0055
+    },
+    {
+      "feature": "is_night",
+      "importance": 0.0044
+    },
+    {
+      "feature": "user_avg_amount",
+      "importance": 0.0019
+    },
+    {
+      "feature": "amount",
+      "importance": 0.0015
+    },
+    {
+      "feature": "is_new_device",
+      "importance": 0.0012
+    },
+    {
+      "feature": "city_encoded",
+      "importance": 0.0006
+    },
+    {
+      "feature": "latitude",
+      "importance": 0.0006
+    },
+    {
+      "feature": "longitude",
+      "importance": 0.0004
+    },
+    {
+      "feature": "day_of_week",
+      "importance": 0.0002
+    }
+  ],
+  "confusion_matrix": [
+    [
+      8501,
+      0
+    ],
+    [
+      0,
+      98
+    ]
+  ],
+  "vs_random_forest": {
+    "accuracy": 1.0,
+    "roc_auc": 1.0
+  },
+  "vs_xgboost": {
+    "accuracy": 1.0,
+    "roc_auc": 1.0
+  },
+  "model_type": "XGBoost",
+  "anomaly_detection": {
+    "algorithm": "IsolationForest",
+    "trained_on": "legitimate_only",
+    "contamination": 0.0114,
+    "novelty_threshold": 65,
+    "description": "Scores 0-100. Values >65 indicate a novel/unknown transaction pattern not seen during training."
+  }
+}

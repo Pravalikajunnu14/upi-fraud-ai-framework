@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UPI Shield — Fraud Intelligence Hub</title>
+    <meta name="description" content="Fraud Intelligence Dashboard for bank analysts — real-time UPI monitoring" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        :root {
+            --red: #EF4444;
+            --red-dim: rgba(239, 68, 68, .15);
+            --red-border: rgba(239, 68, 68, .3);
+            --amber: #F59E0B;
+            --amber-dim: rgba(245, 158, 11, .12);
+            --amber-border: rgba(245, 158, 11, .3);
+            --green: #22C55E;
+            --green-dim: rgba(34, 197, 94, .12);
+            --green-border: rgba(34, 197, 94, .3);
+            --purple: #A855F7;
+            --purple-dim: rgba(168, 85, 247, .12);
+            --purple-border: rgba(168, 85, 247, .3);
+            --blue: #3B82F6;
+            --blue-dim: rgba(59, 130, 246, .1);
+            --blue-border: rgba(59, 130, 246, .25);
+            --surface: rgba(10, 15, 30, .9);
+            --border: rgba(59, 130, 246, .18);
+            --text: #f0f6ff;
+            --muted: #64748b;
+            --subtle: #94a3b8;
+            --ff-code: 'Fira Code', monospace;
+            --ff-sans: 'Fira Sans', sans-serif;
+        }
+
+        /* ── Layout (reuse existing sidebar shell) ── */
+        .intel-main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 1.75rem;
+        }
+
+        /* ── Section Heading ── */
+        .section-title {
+            font-family: var(--ff-code);
+            font-size: .75rem;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            margin: 0 0 .75rem;
+        }
+
+        /* ── Global Metrics ── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.1rem 1.25rem;
+            backdrop-filter: blur(18px);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: border-color .2s, transform .18s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(59, 130, 246, .4);
+        }
+
+        .metric-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .metric-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .metric-icon.green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .metric-icon.red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .metric-icon.amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+
+        .metric-icon.purple {
+            background: var(--purple-dim);
+            color: var(--purple);
+        }
+
+        .metric-icon.blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+
+        .metric-val {
+            font-family: var(--ff-code);
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .metric-lbl {
+            font-size: .72rem;
+            color: var(--muted);
+            font-family: var(--ff-sans);
+            margin-top: .3rem;
+        }
+
+        /* ── Two-column layout ── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media(max-width:900px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Panel card ── */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.1rem 1.25rem;
+            backdrop-filter: blur(18px);
+        }
+
+        .panel-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: .85rem;
+        }
+
+        .panel-hdr h3 {
+            font-family: var(--ff-code);
+            font-size: .85rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+        }
+
+        .panel-hdr h3 svg {
+            width: 15px;
+            height: 15px;
+            color: var(--blue);
+        }
+
+        .live-pill {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .22rem .65rem;
+            border-radius: 20px;
+            background: rgba(34, 197, 94, .12);
+            border: 1px solid rgba(34, 197, 94, .3);
+            font-size: .65rem;
+            font-weight: 700;
+            font-family: var(--ff-code);
+            color: var(--green);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .35
+            }
+        }
+
+        /* ── Network Graph Canvas ── */
+        #network-canvas {
+            width: 100%;
+            height: 260px;
+            border-radius: 10px;
+            background: rgba(5, 10, 22, .7);
+            cursor: grab;
+        }
+
+        .stream-footer {
+            margin-top: .55rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-size: .69rem;
+            color: var(--muted);
+            font-family: var(--ff-sans);
+        }
+
+        .stream-legend {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+        }
+
+        .leg-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* ── Investigation Queue ── */
+        .queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .6rem .8rem;
+            background: rgba(255, 255, 255, .025);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background .18s, border-color .18s;
+        }
+
+        .queue-item:hover,
+        .queue-item.active {
+            background: rgba(59, 130, 246, .09);
+            border-color: rgba(59, 130, 246, .3);
+        }
+
+        .queue-rank {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--ff-code);
+            font-size: .65rem;
+            font-weight: 700;
+            background: rgba(255, 255, 255, .06);
+            color: var(--subtle);
+            flex-shrink: 0;
+        }
+
+        .queue-vpa {
+            font-family: var(--ff-code);
+            font-size: .72rem;
+            color: var(--text);
+        }
+
+        .queue-amt {
+            font-size: .72rem;
+            color: var(--subtle);
+            font-family: var(--ff-sans);
+        }
+
+        .risk-badge {
+            margin-left: auto;
+            padding: .18rem .55rem;
+            border-radius: 6px;
+            font-family: var(--ff-code);
+            font-size: .64rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .risk-badge.high {
+            background: var(--red-dim);
+            color: #FCA5A5;
+            border: 1px solid var(--red-border);
+        }
+
+        .risk-badge.medium {
+            background: var(--amber-dim);
+            color: #FCD34D;
+            border: 1px solid var(--amber-border);
+        }
+
+        .risk-badge.low {
+            background: var(--green-dim);
+            color: #86EFAC;
+            border: 1px solid var(--green-border);
+        }
+
+        .btn-investigate {
+            padding: .22rem .6rem;
+            border-radius: 6px;
+            font-size: .65rem;
+            font-weight: 600;
+            font-family: var(--ff-sans);
+            cursor: pointer;
+            border: 1px solid var(--blue-border);
+            background: var(--blue-dim);
+            color: #60A5FA;
+            transition: background .18s;
+            flex-shrink: 0;
+        }
+
+        .btn-investigate:hover {
+            background: rgba(59, 130, 246, .22);
+        }
+
+        /* ── Case View ── */
+        .case-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media(max-width:900px) {
+            .case-split {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .meta-list {
+            display: flex;
+            flex-direction: column;
+            gap: .45rem;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: .45rem .6rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, .025);
+        }
+
+        .meta-key {
+            font-size: .72rem;
+            color: var(--muted);
+            font-family: var(--ff-sans);
+        }
+
+        .meta-val {
+            font-family: var(--ff-code);
+            font-size: .72rem;
+            color: var(--text);
+        }
+
+        .meta-val.flag-red {
+            color: #FCA5A5;
+        }
+
+        .meta-val.flag-green {
+            color: #86EFAC;
+        }
+
+        /* ── Biometrics gauges ── */
+        .bio-grid {
+            display: flex;
+            flex-direction: column;
+            gap: .65rem;
+        }
+
+        .bio-item {
+            display: flex;
+            flex-direction: column;
+            gap: .3rem;
+        }
+
+        .bio-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: .72rem;
+            font-family: var(--ff-sans);
+            color: var(--subtle);
+        }
+
+        .bio-bar-track {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .06);
+            overflow: hidden;
+        }
+
+        .bio-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1.2s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .bio-fingerprint {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+            margin-top: .25rem;
+        }
+
+        .fp-chip {
+            padding: .18rem .5rem;
+            border-radius: 6px;
+            font-size: .62rem;
+            font-family: var(--ff-code);
+            background: rgba(168, 85, 247, .1);
+            border: 1px solid rgba(168, 85, 247, .2);
+            color: #C4B5FD;
+        }
+
+        /* ── XAI Section ── */
+        .xai-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .xai-panel-inner {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 1rem;
+        }
+
+        @media(max-width:900px) {
+            .xai-panel-inner {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .decision-rules {
+            display: flex;
+            flex-direction: column;
+            gap: .45rem;
+        }
+
+        .rule-row {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            padding: .45rem .7rem;
+            border-radius: 9px;
+            border-left: 3px solid transparent;
+            background: rgba(255, 255, 255, .025);
+            font-size: .74rem;
+        }
+
+        .rule-row.triggered {
+            border-left-color: var(--red);
+            background: rgba(239, 68, 68, .06);
+        }
+
+        .rule-row.safe {
+            border-left-color: var(--green);
+            background: rgba(34, 197, 94, .04);
+        }
+
+        .rule-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .rule-text {
+            flex: 1;
+            color: var(--subtle);
+            font-family: var(--ff-sans);
+            line-height: 1.35;
+        }
+
+        .rule-text strong {
+            color: var(--text);
+        }
+
+        .rule-weight {
+            font-family: var(--ff-code);
+            font-size: .65rem;
+            font-weight: 700;
+            padding: .15rem .45rem;
+            border-radius: 5px;
+            flex-shrink: 0;
+        }
+
+        .rule-weight.pos {
+            background: var(--red-dim);
+            color: #FCA5A5;
+        }
+
+        .rule-weight.neg {
+            background: var(--green-dim);
+            color: #86EFAC;
+        }
+
+        /* ── Topbar override for this page ── */
+        .intel-topbar {
+            padding: 1.1rem 1.75rem .85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+            background: rgba(6, 11, 24, .6);
+            backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .intel-topbar h1 {
+            font-family: var(--ff-code);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .intel-topbar .subtitle {
+            font-size: .75rem;
+            color: var(--muted);
+            font-family: var(--ff-sans);
+            margin-top: .15rem;
+        }
+
+        .topbar-badges {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, .3);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="#intel-main" class="skip-link">Skip to main content</a>
+    <div class="layout">
+
+        <!-- ── Sidebar ─────────────────────────────────────────────── -->
+        <nav class="sidebar" id="sidebar" aria-label="Primary navigation">
+            <div class="sidebar-brand">
+                <div class="brand-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                        style="width:22px;height:22px;color:#fff;">
+                        <path fill-rule="evenodd"
+                            d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div>
+                    <h2>UPI Shield</h2><span>Fraud Detection AI</span>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Main</div>
+                <a href="dashboard.html" class="nav-item" id="nav-dashboard">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z" />
+                        </svg>
+                    </span>Dashboard
+                </a>
+                <a href="transactions.html" class="nav-item" id="nav-txn">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15z" />
+                            <path fill-rule="evenodd"
+                                d="M22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </span>Check Transaction
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Intelligence</div>
+                <a href="fraud_intelligence.html" class="nav-item active" aria-current="page">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M9.315 7.584C12.195 3.883 16.695 1.5 21.75 1.5a.75.75 0 01.75.75c0 5.056-2.383 9.555-6.084 12.436A6.75 6.75 0 019.75 22.5a.75.75 0 01-.75-.75v-4.131A15.838 15.838 0 016.382 15H2.25a.75.75 0 01-.75-.75 6.75 6.75 0 017.815-6.666zM15 6.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z"
+                                clip-rule="evenodd" />
+                            <path
+                                d="M5.26 17.242a.75.75 0 10-.897-1.203 5.243 5.243 0 00-2.05 5.022.75.75 0 00.625.627 5.243 5.243 0 005.022-2.051.75.75 0 10-1.202-.897 3.744 3.744 0 01-3.008 1.51c0-1.23.592-2.323 1.51-3.008z" />
+                        </svg>
+                    </span>Intelligence Hub
+                </a>
+                <a href="fraud_intervention.html" class="nav-item">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </span>Fraud Intervention
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Analytics</div>
+                <a href="dashboard.html#section-charts" class="nav-item">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M2.25 13.5a8.25 8.25 0 018.25-8.25.75.75 0 01.75.75v6.75H18a.75.75 0 01.75.75 8.25 8.25 0 01-16.5 0z"
+                                clip-rule="evenodd" />
+                            <path fill-rule="evenodd"
+                                d="M12.75 3a.75.75 0 01.75-.75 8.25 8.25 0 018.25 8.25.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V3z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </span>Charts &amp; Analytics
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-badge">
+                    <div class="user-avatar" id="user-avatar" aria-hidden="true">A</div>
+                    <div class="user-info">
+                        <div class="name" id="user-name">Analyst</div>
+                        <div class="role" id="user-role">admin</div>
+                    </div>
+                    <button class="logout-btn" title="Logout" aria-label="Log out" onclick="logout()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm5.03 4.72a.75.75 0 010 1.06l-1.72 1.72h10.94a.75.75 0 010 1.5H10.81l1.72 1.72a.75.75 0 11-1.06 1.06l-3-3a.75.75 0 010-1.06l3-3a.75.75 0 011.06 0z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ── Main ──────────────────────────────────────────────── -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+
+            <!-- Sticky Topbar -->
+            <div class="intel-topbar">
+                <div>
+                    <h1>Fraud Intelligence Hub</h1>
+                    <p class="subtitle">Real-time analyst command center · Visual Link Analysis · XAI</p>
+                </div>
+                <div class="topbar-badges">
+                    <div class="live-pill" role="status">
+                        <div class="live-dot" aria-hidden="true"></div>LIVE
+                    </div>
+                    <div class="security-indicator">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                            aria-hidden="true">
+                            <path fill-rule="evenodd"
+                                d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Encrypted
+                    </div>
+                </div>
+            </div>
+
+            <main class="intel-main" id="intel-main">
+
+                <!-- ── Global Metrics ── -->
+                <p class="section-title">Global Metrics</p>
+                <div class="metrics-grid" role="region" aria-label="Global fraud metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon green">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="metric-val" id="m-capture">0%</div>
+                            <div class="metric-lbl">Fraud Capture Rate</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon amber">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="metric-val" id="m-fpr">0%</div>
+                            <div class="metric-lbl">False Positive Rate</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15z" />
+                                <path fill-rule="evenodd"
+                                    d="M22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="metric-val" id="m-revenue">₹0</div>
+                            <div class="metric-lbl">Saved Revenue</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon red">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0 24.585 24.585 0 01-4.831-1.244.75.75 0 01-.298-1.205A8.217 8.217 0 005.25 9.75V9zm4.502 8.9a2.25 2.25 0 104.496 0 25.057 25.057 0 01-4.496 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="metric-val" id="m-alerts">0</div>
+                            <div class="metric-lbl">Active Alerts</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm4.28 10.28a.75.75 0 000-1.06l-3-3a.75.75 0 10-1.06 1.06l1.72 1.72H8.25a.75.75 0 000 1.5h5.69l-1.72 1.72a.75.75 0 101.06 1.06l3-3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="metric-val" id="m-blocked">0</div>
+                            <div class="metric-lbl">Blocked Today</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Network Graph + Investigation Queue ── -->
+                <div class="two-col">
+
+                    <!-- Transaction Stream / Network Graph -->
+                    <div class="panel" role="region" aria-label="Transaction network graph">
+                        <div class="panel-hdr">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v3.026a.75.75 0 01-.375.65 2.249 2.249 0 000 3.898.75.75 0 01.375.65v3.026c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625v-3.026a.75.75 0 01.374-.65 2.249 2.249 0 000-3.898.75.75 0 01-.374-.65V6.375zm15-1.125a.75.75 0 01.75.75v.75a.75.75 0 01-1.5 0V6a.75.75 0 01.75-.75zm.75 4.5a.75.75 0 00-1.5 0v.75a.75.75 0 001.5 0v-.75zm-.75 3a.75.75 0 01.75.75v.75a.75.75 0 01-1.5 0v-.75a.75.75 0 01.75-.75zm.75 4.5a.75.75 0 00-1.5 0V18a.75.75 0 001.5 0v-.75zM6 12a.75.75 0 01.75-.75H12a.75.75 0 010 1.5H6.75A.75.75 0 016 12zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Transaction Stream
+                            </h3>
+                            <div class="live-pill">
+                                <div class="live-dot" aria-hidden="true"></div>Live
+                            </div>
+                        </div>
+                        <canvas id="network-canvas"
+                            aria-label="Visual link analysis network graph showing account connections"></canvas>
+                        <div class="stream-footer">
+                            <div class="stream-legend">
+                                <div class="leg-dot" style="background:#22C55E;"></div>Safe
+                            </div>
+                            <div class="stream-legend">
+                                <div class="leg-dot" style="background:#EF4444;"></div>Suspicious
+                            </div>
+                            <div class="stream-legend">
+                                <div class="leg-dot" style="background:#F59E0B;"></div>Mule Network
+                            </div>
+                            <span style="margin-left:auto;" id="stream-count" aria-live="polite">Nodes: 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Investigation Queue -->
+                    <div class="panel" role="region" aria-label="Investigation queue">
+                        <div class="panel-hdr">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Investigation Queue
+                            </h3>
+                            <span style="font-size:.68rem;color:var(--muted);font-family:var(--ff-code);"
+                                id="queue-count" aria-live="polite">0 cases</span>
+                        </div>
+                        <div class="queue-list" id="queue-list" role="list" aria-label="Prioritized fraud alerts"></div>
+                    </div>
+                </div>
+
+                <!-- ── Case View ── -->
+                <p class="section-title">Case View</p>
+                <div class="case-split" id="case-view" role="region" aria-label="Selected case details">
+
+                    <!-- Transaction Metadata -->
+                    <div class="panel">
+                        <div class="panel-hdr">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15zM22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Transaction Metadata
+                            </h3>
+                        </div>
+                        <div class="meta-list" id="meta-list" role="list" aria-label="Transaction details">
+                            <div class="meta-row"
+                                style="justify-content:center;color:var(--muted);font-size:.8rem;font-family:var(--ff-sans);">
+                                Select a case from the queue →
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Behavioral Biometrics -->
+                    <div class="panel">
+                        <div class="panel-hdr">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true">
+                                    <path
+                                        d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                                </svg>
+                                Behavioral Biometrics
+                            </h3>
+                        </div>
+                        <div class="bio-grid" id="bio-grid" role="region" aria-label="Behavioral biometrics signals">
+                            <div
+                                style="color:var(--muted);font-size:.8rem;font-family:var(--ff-sans);text-align:center;padding:.5rem 0;">
+                                Select a case to view biometrics →
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── XAI Explainability ── -->
+                <p class="section-title">AI Explainability (XAI)</p>
+                <div class="xai-section">
+                    <div class="panel">
+                        <div class="panel-hdr">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true">
+                                    <path d="M16.5 7.5h-9v9h9v-9z" />
+                                    <path fill-rule="evenodd"
+                                        d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75h-2.25V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Decision Explanation · SHAP Feature Importance
+                            </h3>
+                            <span class="chart-badge">ML Model</span>
+                        </div>
+                        <div class="xai-panel-inner">
+                            <canvas id="xai-chart" height="200" aria-label="SHAP feature importance bar chart"></canvas>
+                            <div>
+                                <p
+                                    style="font-size:.72rem;color:var(--muted);font-family:var(--ff-sans);margin-bottom:.6rem;">
+                                    Decision Rules Triggered</p>
+                                <div class="decision-rules" id="decision-rules" role="list" aria-label="Decision rules">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/fraud_intelligence.js"></script>
+</body>
+
+</html>

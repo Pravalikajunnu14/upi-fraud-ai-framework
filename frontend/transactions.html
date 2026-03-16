@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UPI Shield — Transaction Fraud Checker</title>
+    <meta name="description" content="Submit a UPI transaction to get an instant AI-powered fraud assessment" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- QR Code Scanner library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        /* ── Gauge SVG ───────────────────────────────────────────── */
+        .gauge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .gauge-svg {
+            width: 200px;
+            height: 110px;
+        }
+
+        .gauge-track {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.08);
+            stroke-width: 18;
+            stroke-linecap: round;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke-width: 18;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s;
+        }
+
+        .gauge-number {
+            font-size: 2.3rem;
+            font-weight: 700;
+            fill: var(--text-primary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .gauge-pct {
+            font-size: 0.85rem;
+            fill: var(--text-secondary);
+            font-family: 'Fira Sans', sans-serif;
+        }
+
+        /* ── Result panel ────────────────────────────────────────── */
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .result-item {
+            background: rgba(59, 130, 246, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: var(--transition);
+        }
+
+        .result-item:hover {
+            border-color: var(--border-hover);
+        }
+
+        .result-item .label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 0.3rem;
+            font-family: 'Fira Sans', sans-serif;
+        }
+
+        .result-item .value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .recommendation-box {
+            margin-top: 1rem;
+            padding: 1rem 1.2rem;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .recommendation-box svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .rec-fraud {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+        }
+
+        .rec-legit {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #86efac;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Placeholder */
+        .result-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            gap: 1rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .result-placeholder svg {
+            width: 64px;
+            height: 64px;
+            color: var(--primary-dim);
+            opacity: 0.6;
+        }
+
+        .result-placeholder p {
+            max-width: 240px;
+            font-size: 0.875rem;
+        }
+
+        /* QR modal */
+        .qr-modal {
+            display: none;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .qr-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .qr-modal-header span {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .qr-modal-header span svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .qr-close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 6px;
+            transition: color 0.2s;
+        }
+
+        .qr-close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .qr-close-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Scan QR button */
+        .btn-qr {
+            padding: 0.6rem 0.85rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-strong);
+            background: var(--primary-dim);
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--primary-light);
+            white-space: nowrap;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: var(--transition);
+            font-family: 'Fira Sans', sans-serif;
+        }
+
+        .btn-qr svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-qr:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+        }
+
+        .btn-qr:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <div class="layout">
+
+        <!-- Sidebar -->
+        <nav class="sidebar" aria-label="Primary navigation">
+            <div class="sidebar-brand">
+                <div class="brand-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                        style="width:22px;height:22px;color:#fff;">
+                        <path fill-rule="evenodd"
+                            d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div>
+                    <h2>UPI Shield</h2>
+                    <span>Fraud Detection AI</span>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Main</div>
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z" />
+                        </svg>
+                    </span>
+                    Dashboard
+                </a>
+                <a href="transactions.html" class="nav-item active" aria-current="page">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15z" />
+                            <path fill-rule="evenodd"
+                                d="M22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                    Check Transaction
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Intelligence</div>
+                <a href="fraud_intelligence.html" class="nav-item">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M9.315 7.584C12.195 3.883 16.695 1.5 21.75 1.5a.75.75 0 01.75.75c0 5.056-2.383 9.555-6.084 12.436A6.75 6.75 0 019.75 22.5a.75.75 0 01-.75-.75v-4.131A15.838 15.838 0 016.382 15H2.25a.75.75 0 01-.75-.75 6.75 6.75 0 017.815-6.666zM15 6.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z"
+                                clip-rule="evenodd" />
+                            <path
+                                d="M5.26 17.242a.75.75 0 10-.897-1.203 5.243 5.243 0 00-2.05 5.022.75.75 0 00.625.627 5.243 5.243 0 005.022-2.051.75.75 0 10-1.202-.897 3.744 3.744 0 01-3.008 1.51c0-1.23.592-2.323 1.51-3.008z" />
+                        </svg>
+                    </span>
+                    Intelligence Hub
+                </a>
+                <a href="fraud_intervention.html" class="nav-item">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                    Fraud Intervention
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-badge">
+                    <div class="user-avatar" id="user-avatar" aria-hidden="true">U</div>
+                    <div class="user-info">
+                        <div class="name" id="user-name">Loading…</div>
+                        <div class="role" id="user-role">user</div>
+                    </div>
+                    <button class="logout-btn" title="Logout" aria-label="Log out" onclick="logout()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm5.03 4.72a.75.75 0 010 1.06l-1.72 1.72h10.94a.75.75 0 010 1.5H10.81l1.72 1.72a.75.75 0 11-1.06 1.06l-3-3a.75.75 0 010-1.06l3-3a.75.75 0 011.06 0z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main -->
+        <main class="main-content" id="main-content">
+            <div class="topbar">
+                <div>
+                    <h1>Transaction Fraud Checker</h1>
+                    <p class="subtitle">Submit a UPI transaction for an instant AI-powered fraud assessment</p>
+                </div>
+                <div class="topbar-right">
+                    <div class="security-indicator" role="status" aria-label="AI model status: active">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                            aria-hidden="true">
+                            <path d="M16.5 7.5h-9v9h9v-9z" />
+                            <path fill-rule="evenodd"
+                                d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75h-2.25V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        AI Model Active
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;">
+
+                <!-- Input Form -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                aria-hidden="true" style="width:17px;height:17px;color:var(--primary-light);">
+                                <path fill-rule="evenodd"
+                                    d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Transaction Details
+                        </h3>
+                    </div>
+                    <form id="txn-form" onsubmit="submitTransaction(event)" novalidate>
+                        <!-- UPI ID + QR Scanner -->
+                        <div class="form-group" style="margin-bottom:1rem;">
+                            <label for="f-upiid">
+                                UPI ID
+                                <span style="color:#475569;font-size:.72rem;margin-left:.4rem;">(e.g.
+                                    user@okicici)</span>
+                            </label>
+                            <div style="display:flex;gap:.5rem;align-items:center;">
+                                <input type="text" id="f-upiid" placeholder="e.g. merchant@okhdfc" style="flex:1;"
+                                    autocomplete="off" />
+                                <button type="button" onclick="openQRScanner()" class="btn-qr" title="Scan UPI QR Code"
+                                    aria-label="Scan UPI QR Code">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        aria-hidden="true">
+                                        <path fill-rule="evenodd"
+                                            d="M3 4.875C3 3.839 3.84 3 4.875 3h4.5C10.41 3 11.25 3.84 11.25 4.875v4.5c0 1.036-.84 1.875-1.875 1.875h-4.5A1.875 1.875 0 013 9.375v-4.5zM4.875 4.5a.375.375 0 00-.375.375v4.5c0 .207.168.375.375.375h4.5a.375.375 0 00.375-.375v-4.5a.375.375 0 00-.375-.375h-4.5zm7.5.375C12.375 3.84 13.215 3 14.25 3h4.5C19.785 3 20.625 3.84 20.625 4.875v4.5c0 1.036-.84 1.875-1.875 1.875h-4.5a1.875 1.875 0 01-1.875-1.875v-4.5zm1.875-.375a.375.375 0 00-.375.375v4.5c0 .207.168.375.375.375h4.5a.375.375 0 00.375-.375v-4.5a.375.375 0 00-.375-.375h-4.5zM3 14.625C3 13.59 3.84 12.75 4.875 12.75h4.5c1.036 0 1.875.84 1.875 1.875v4.5c0 1.035-.84 1.875-1.875 1.875h-4.5A1.875 1.875 0 013 19.125v-4.5zm1.875-.375a.375.375 0 00-.375.375v4.5c0 .207.168.375.375.375h4.5a.375.375 0 00.375-.375v-4.5a.375.375 0 00-.375-.375h-4.5zm7.5.375c0-1.036.84-1.875 1.875-1.875h.375a.75.75 0 010 1.5h-.375a.375.375 0 00-.375.375V15a.75.75 0 01-1.5 0v-.375zm4.5 0c0-1.035.84-1.875 1.875-1.875h.375a.75.75 0 010 1.5h-.375a.375.375 0 00-.375.375v4.125a.75.75 0 01-1.5 0V14.625z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                    Scan QR
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- QR Reader modal -->
+                        <div id="qr-modal" class="qr-modal">
+                            <div class="qr-modal-header">
+                                <span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        aria-hidden="true">
+                                        <path fill-rule="evenodd"
+                                            d="M2.25 4.125c0-1.036.84-1.875 1.875-1.875h5.25c1.036 0 1.875.84 1.875 1.875V17.25a4.5 4.5 0 11-9 0V4.125zm4.5 14.25a1.125 1.125 0 100-2.25 1.125 1.125 0 000 2.25z"
+                                            clip-rule="evenodd" />
+                                        <path
+                                            d="M10.719 21.75h9.156c1.036 0 1.875-.84 1.875-1.875V10.5a.75.75 0 00-.75-.75h-2.25a.75.75 0 00-.75.75v10.25a.75.75 0 01-.75.75h-.75v.25a.75.75 0 01-1.5 0v-.25h-1v.25a.75.75 0 01-1.5 0v-.25H12a.75.75 0 01-.75-.75v-.5a.75.75 0 01.75-.75h.219z" />
+                                    </svg>
+                                    Point camera at UPI QR Code
+                                </span>
+                                <button type="button" onclick="closeQRScanner()" class="qr-close-btn"
+                                    aria-label="Close QR scanner">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="qr-reader" style="border-radius:10px;overflow:hidden;"></div>
+                            <p id="qr-status" style="font-size:.72rem;color:#475569;margin:.5rem 0 0;text-align:center;"
+                                aria-live="polite"></p>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:1rem;">
+                            <label for="f-amount">Transaction Amount (₹)</label>
+                            <input type="number" id="f-amount" placeholder="e.g. 25000" min="1" required />
+                        </div>
+
+                        <div class="form-row" style="margin-bottom:1rem;">
+                            <div class="form-group">
+                                <label for="f-city">City / Location</label>
+                                <input type="text" id="f-city" placeholder="Detecting location…" value="Mumbai" />
+                                <span id="location-status"
+                                    style="font-size:.7rem;color:#475569;display:none;margin-top:.25rem;"
+                                    aria-live="polite"></span>
+                            </div>
+                            <div class="form-group">
+                                <label for="f-hour">Hour of Day (0–23)</label>
+                                <input type="number" id="f-hour" min="0" max="23" placeholder="e.g. 2" />
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom:1rem;">
+                            <div class="form-group">
+                                <label for="f-device">Device ID</label>
+                                <input type="text" id="f-device" placeholder="e.g. DEV_1234" />
+                            </div>
+                            <div class="form-group">
+                                <label for="f-newdevice">Is New Device?</label>
+                                <select id="f-newdevice">
+                                    <option value="0">No (Known Device)</option>
+                                    <option value="1">Yes (New Device)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom:1rem;">
+                            <div class="form-group">
+                                <label for="f-freq">Transaction Frequency (last 1h)</label>
+                                <input type="number" id="f-freq" min="1" max="50" value="2" />
+                            </div>
+                            <div class="form-group">
+                                <label for="f-avgamt">Your Avg Txn Amount (₹)</label>
+                                <input type="number" id="f-avgamt" placeholder="e.g. 5000" />
+                            </div>
+                        </div>
+
+                        <!-- Quick Presets -->
+                        <p
+                            style="font-size:.73rem;color:#475569;margin-bottom:.5rem;font-family:'Fira Sans',sans-serif;">
+                            Quick presets:</p>
+                        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem;" role="group"
+                            aria-label="Quick preset scenarios">
+                            <button type="button" class="btn btn-ghost" style="font-size:.75rem;padding:.35rem .75rem;"
+                                onclick="setPreset('normal')">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    style="width:13px;height:13px;color:#86efac;" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Normal Txn
+                            </button>
+                            <button type="button" class="btn btn-ghost" style="font-size:.75rem;padding:.35rem .75rem;"
+                                onclick="setPreset('suspicious')">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    style="width:13px;height:13px;color:#fcd34d;" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Suspicious
+                            </button>
+                            <button type="button" class="btn btn-ghost" style="font-size:.75rem;padding:.35rem .75rem;"
+                                onclick="setPreset('fraud')">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    style="width:13px;height:13px;color:#fca5a5;" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                High Risk
+                            </button>
+                        </div>
+
+                        <div style="display:flex;gap:.75rem;">
+                            <button type="submit" class="btn btn-primary" id="btn-submit"
+                                style="flex:1;padding:.9rem;font-size:1rem;justify-content:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Analyse
+                            </button>
+                            <button type="button" class="btn btn-ghost" id="btn-clear" onclick="clearForm()"
+                                title="Clear all fields and reset result" style="padding:.9rem 1.2rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    aria-hidden="true" style="width:18px;height:18px;">
+                                    <path fill-rule="evenodd"
+                                        d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Clear
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Result Panel -->
+                <div>
+                    <div id="result-section" style="display:none;" aria-live="polite">
+                        <div class="result-card" id="result-card">
+                            <div class="chart-header">
+                                <h3>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        aria-hidden="true" style="width:17px;height:17px;color:var(--primary-light);">
+                                        <path fill-rule="evenodd"
+                                            d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813A3.75 3.75 0 007.466 7.89l.813-2.846A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                    Analysis Result
+                                </h3>
+                                <span id="result-txn-id"
+                                    style="font-family:'Fira Code',monospace;font-size:.78rem;color:#94a3b8;"></span>
+                            </div>
+
+                            <!-- Gauge -->
+                            <div class="gauge-container">
+                                <svg class="gauge-svg" viewBox="0 0 200 110" aria-hidden="true">
+                                    <!-- Track: semicircle from 180° to 0° -->
+                                    <path class="gauge-track" d="M 20 100 A 80 80 0 0 1 180 100" />
+                                    <path class="gauge-fill" id="gauge-path" d="M 20 100 A 80 80 0 0 1 180 100"
+                                        stroke-dasharray="251.3" stroke-dashoffset="251.3" stroke="#3B82F6" />
+                                    <text class="gauge-number" id="gauge-number" x="100" y="90"
+                                        text-anchor="middle">0</text>
+                                    <text class="gauge-pct" x="100" y="108" text-anchor="middle">Fraud Score %</text>
+                                </svg>
+                            </div>
+
+                            <div class="result-grid">
+                                <div class="result-item">
+                                    <div class="label">Label</div>
+                                    <div class="value" id="r-label">—</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">Risk Level</div>
+                                    <div class="value" id="r-risk">—</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">Amount</div>
+                                    <div class="value" id="r-amount">—</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">City</div>
+                                    <div class="value" id="r-city">—</div>
+                                </div>
+                            </div>
+
+                            <div class="recommendation-box" id="r-recommendation"></div>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder before first check -->
+                    <div id="result-placeholder" class="chart-card result-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                            aria-hidden="true">
+                            <path fill-rule="evenodd"
+                                d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <p>Fill in the transaction details and click <strong>Analyse</strong> to see the AI fraud
+                            assessment.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent transactions table -->
+            <div class="feed-card" style="margin-top:1.5rem;" role="region" aria-label="Recent transaction checks">
+                <div class="feed-header">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                            aria-hidden="true" style="width:17px;height:17px;color:var(--cta);">
+                            <path fill-rule="evenodd"
+                                d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Recent Checks
+                    </h3>
+                    <button class="btn btn-ghost" onclick="loadHistory()" style="font-size:.8rem;"
+                        aria-label="Refresh transaction history">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                            aria-hidden="true" style="width:15px;height:15px;">
+                            <path fill-rule="evenodd"
+                                d="M4.755 10.059a7.5 7.5 0 0112.548-3.364l1.903 1.903h-3.183a.75.75 0 100 1.5h4.992a.75.75 0 00.75-.75V4.356a.75.75 0 00-1.5 0v3.18l-1.9-1.9A9 9 0 003.306 9.67a.75.75 0 101.45.388zm15.408 3.352a.75.75 0 00-.919.53 7.5 7.5 0 01-12.548 3.364l-1.902-1.903h3.183a.75.75 0 000-1.5H2.984a.75.75 0 00-.75.75v4.992a.75.75 0 001.5 0v-3.18l1.9 1.9a9 9 0 0015.059-4.035.75.75 0 00-.53-.918z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table id="history-table" aria-label="Transaction history">
+                        <thead>
+                            <tr>
+                                <th scope="col">TXN ID</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">City</th>
+                                <th scope="col">Score</th>
+                                <th scope="col">Label</th>
+                                <th scope="col">Risk</th>
+                                <th scope="col">Time</th>
+                                <th scope="col">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body">
+                            <tr>
+                                <td colspan="8" style="text-align:center;padding:2.5rem;color:#475569;">
+                                    No transactions yet. Submit one above!
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/transactions.js"></script>
+    <script>
+        function clearForm() {
+            // Reset all form fields
+            document.getElementById('txn-form').reset();
+            document.getElementById('f-city').value = 'Mumbai';
+            // Hide result panel, show placeholder
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('result-placeholder').style.display = 'flex';
+            // Close QR scanner if open
+            if (typeof closeQRScanner === 'function') try { closeQRScanner(); } catch (e) { }
+            // Scroll back to top of form
+            document.getElementById('txn-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+</body>
+
+</html>

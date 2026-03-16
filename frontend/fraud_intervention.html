@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UPI Shield — Fraud Alert</title>
+  <meta name="description" content="Real-time UPI fraud intervention screen — AI-powered risk detection" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060b18;
+      --surface: rgba(10, 15, 30, 0.92);
+      --border: rgba(59, 130, 246, 0.22);
+      --blue: #3B82F6;
+      --blue-glow: rgba(59, 130, 246, 0.38);
+      --red: #EF4444;
+      --red-glow: rgba(239, 68, 68, 0.4);
+      --amber: #F59E0B;
+      --green: #22C55E;
+      --text: #f0f6ff;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+      --ff-code: 'Fira Code', monospace;
+      --ff-sans: 'Fira Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: var(--ff-sans);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(59,130,246,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridPan 30s linear infinite;
+    }
+    @keyframes gridPan {
+      from { background-position: 0 0 }
+      to   { background-position: 48px 48px }
+    }
+
+    .orb {
+      position: fixed; border-radius: 50%; filter: blur(90px);
+      opacity: 0.28; z-index: 0; pointer-events: none;
+    }
+    .orb-red  { width:380px; height:380px; background:radial-gradient(#EF4444,#B91C1C,transparent); top:-120px; right:-80px; animation: flt1 10s ease-in-out infinite; }
+    .orb-blue { width:300px; height:300px; background:radial-gradient(#3B82F6,#1D4ED8,transparent); bottom:-100px; left:-80px; animation: flt2 13s ease-in-out infinite; }
+    @keyframes flt1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,30px)} }
+    @keyframes flt2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-25px)} }
+
+    /* ── Phone wrapper ── */
+    .phone-wrap {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 390px;
+    }
+
+    /* ── Safety banner ── */
+    .safety-banner {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .6rem 1rem;
+      background: rgba(245,158,11,.1);
+      border: 1px solid rgba(245,158,11,.35);
+      border-radius: 12px;
+      margin-bottom: .85rem;
+      font-size: .78rem; font-weight: 600;
+      color: #FCD34D;
+      font-family: var(--ff-sans);
+      animation: fadeSlideDown .5s ease;
+    }
+    .safety-banner svg { width:15px; height:15px; flex-shrink:0; }
+    .safety-dot { width:7px; height:7px; border-radius:50%; background:#FCD34D; margin-left:auto; animation: pulse 2s infinite; }
+
+    /* ── Main card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 1.6rem 1.5rem;
+      backdrop-filter: blur(28px);
+      box-shadow: 0 30px 70px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+      animation: fadeSlideDown .45s ease;
+    }
+
+    @keyframes fadeSlideDown {
+      from { opacity:0; transform:translateY(-14px) }
+      to   { opacity:1; transform:translateY(0) }
+    }
+
+    /* ── Header ── */
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.2rem;
+    }
+    .brand-row { display:flex; align-items:center; gap:.6rem; }
+    .brand-icon {
+      width:36px; height:36px; border-radius:10px;
+      background: linear-gradient(135deg,#3B82F6,#2563EB);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 6px 20px var(--blue-glow);
+    }
+    .brand-icon svg { width:18px; height:18px; color:#fff; }
+    .brand-name { font-family:var(--ff-code); font-size:.9rem; font-weight:700; color:#fff; }
+    .brand-sub  { font-size:.68rem; color:var(--muted); font-family:var(--ff-sans); }
+
+    .alert-pill {
+      display:flex; align-items:center; gap:.35rem;
+      padding:.3rem .75rem;
+      background:rgba(239,68,68,.15);
+      border:1px solid rgba(239,68,68,.4);
+      border-radius:20px;
+      font-size:.7rem; font-weight:700; font-family:var(--ff-code);
+      color:#FCA5A5;
+      animation: alertFlash 1.4s ease-in-out infinite;
+    }
+    .alert-pill svg { width:12px; height:12px; }
+    @keyframes alertFlash { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+    /* ── Payee row ── */
+    .payee-row {
+      display:flex; align-items:center; gap:.9rem;
+      padding:.85rem 1rem;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(239,68,68,.18);
+      border-radius:14px;
+      margin-bottom:1.1rem;
+    }
+    .payee-avatar {
+      width:44px; height:44px; border-radius:50%;
+      background: linear-gradient(135deg,#374151,#1f2937);
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--ff-code); font-size:1.1rem; font-weight:700; color:#fff;
+      flex-shrink:0; border:2px solid rgba(239,68,68,.3);
+      position:relative;
+    }
+    .payee-info { flex:1; min-width:0; }
+    .payee-name { font-size:.9rem; font-weight:600; color:var(--text); font-family:var(--ff-sans); }
+    .payee-vpa  { font-size:.72rem; color:var(--muted); font-family:var(--ff-code); margin-top:.1rem; }
+    .payee-badge {
+      display:inline-flex; align-items:center; gap:.25rem;
+      padding:.2rem .55rem;
+      border-radius:8px;
+      font-size:.65rem; font-weight:700; font-family:var(--ff-sans);
+      margin-top:.3rem;
+    }
+    .badge-warning  { background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.3); color:#FCA5A5; }
+    .badge-verified { background:rgba(34,197,94,.13); border:1px solid rgba(34,197,94,.3); color:#86EFAC; }
+    .badge-warning svg, .badge-verified svg { width:10px; height:10px; }
+
+    .amount-chip {
+      text-align:right; flex-shrink:0;
+    }
+    .amount-val { font-family:var(--ff-code); font-size:1.15rem; font-weight:700; color:var(--text); }
+    .amount-label { font-size:.65rem; color:var(--muted); margin-top:.1rem; }
+
+    /* ── Risk Meter ── */
+    .risk-section {
+      display:flex; flex-direction:column; align-items:center;
+      margin-bottom:1.1rem;
+    }
+    .gauge-wrap { position:relative; width:200px; height:108px; }
+    .gauge-wrap svg { width:200px; height:108px; }
+
+    .gauge-track { fill:none; stroke:rgba(255,255,255,.06); stroke-width:14; stroke-linecap:round; }
+    .gauge-fill  { fill:none; stroke-width:14; stroke-linecap:round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1), stroke 1.4s ease;
+      transform-origin:center; transform:rotate(180deg);
+    }
+
+    .gauge-score {
+      position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+      text-align:center;
+    }
+    .gauge-num {
+      font-family:var(--ff-code); font-size:2.1rem; font-weight:700;
+      line-height:1; color:var(--red);
+      text-shadow: 0 0 20px var(--red-glow);
+    }
+    .gauge-label { font-size:.66rem; color:var(--muted); margin-top:.15rem; font-family:var(--ff-sans); }
+    .gauge-caption { font-size:.78rem; color:var(--subtle); margin-top:.5rem; font-family:var(--ff-sans); }
+
+    .risk-ticks {
+      display:flex; gap:.5rem; margin-top:.6rem;
+    }
+    .tick {
+      display:flex; align-items:center; gap:.3rem;
+      font-size:.65rem; font-family:var(--ff-sans); color:var(--muted);
+    }
+    .tick-dot { width:8px; height:8px; border-radius:50%; }
+    .tick-low    { background:#22C55E; }
+    .tick-medium { background:#F59E0B; }
+    .tick-high   { background:#EF4444; }
+
+    /* ── Why tooltip ── */
+    .tooltip-trigger {
+      display:flex; align-items:center; justify-content:center; gap:.4rem;
+      width:100%;
+      padding:.55rem;
+      background:rgba(59,130,246,.08);
+      border:1px solid rgba(59,130,246,.22);
+      border-radius:10px;
+      font-size:.78rem; font-weight:600; color:#60A5FA;
+      cursor:pointer;
+      font-family:var(--ff-sans);
+      transition:background .2s, border-color .2s;
+      margin-bottom:.8rem;
+    }
+    .tooltip-trigger:hover { background:rgba(59,130,246,.15); border-color:rgba(59,130,246,.4); }
+    .tooltip-trigger svg { width:14px; height:14px; }
+    .tooltip-arrow { transition:transform .25s; margin-left:auto; }
+    .tooltip-trigger[aria-expanded="true"] .tooltip-arrow { transform:rotate(180deg); }
+
+    .tooltip-panel {
+      display:none;
+      background:rgba(15,23,42,.9);
+      border:1px solid rgba(59,130,246,.2);
+      border-radius:12px;
+      padding:1rem 1.1rem;
+      margin-bottom:.9rem;
+      animation:fadeSlideDown .22s ease;
+    }
+    .tooltip-panel.open { display:block; }
+    .tooltip-panel h4 {
+      font-family:var(--ff-code); font-size:.8rem; font-weight:700;
+      color:#93C5FD; margin-bottom:.65rem;
+      display:flex; align-items:center; gap:.4rem;
+    }
+    .tooltip-panel h4 svg { width:14px; height:14px; }
+    .reason-list { list-style:none; }
+    .reason-list li {
+      display:flex; align-items:flex-start; gap:.6rem;
+      font-size:.78rem; color:var(--subtle); font-family:var(--ff-sans);
+      line-height:1.45; padding:.35rem 0;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .reason-list li:last-child { border-bottom:none; }
+    .reason-icon { font-size:.85rem; flex-shrink:0; margin-top:.05rem; }
+
+    /* ── Actions ── */
+    .actions { display:flex; flex-direction:column; gap:.7rem; margin-bottom:1rem; }
+
+    .btn-stop {
+      width:100%; padding:.9rem;
+      border:none; border-radius:14px; cursor:pointer;
+      background: linear-gradient(135deg,#EF4444,#B91C1C);
+      color:#fff; font-size:1rem; font-weight:700;
+      font-family:var(--ff-sans);
+      box-shadow: 0 10px 30px var(--red-glow);
+      display:flex; align-items:center; justify-content:center; gap:.6rem;
+      transition:transform .18s, box-shadow .18s;
+      position:relative; overflow:hidden;
+    }
+    .btn-stop svg { width:20px; height:20px; }
+    .btn-stop:hover { transform:translateY(-2px); box-shadow:0 16px 40px rgba(239,68,68,.55); }
+    .btn-stop:active { transform:translateY(0); }
+    .btn-stop::after {
+      content:''; position:absolute; inset:0;
+      background:rgba(255,255,255,0); transition:background .15s;
+    }
+    .btn-stop:hover::after { background:rgba(255,255,255,.06); }
+
+    /* Shake animation on stop click */
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-6px)}
+      40%{transform:translateX(6px)}
+      60%{transform:translateX(-4px)}
+      80%{transform:translateX(4px)}
+    }
+    .btn-stop.shake-anim { animation:shake .45s ease; }
+
+    /* Haptic pulse ring */
+    .pulse-ring {
+      position:absolute; inset:-8px; border-radius:22px;
+      border:2px solid rgba(239,68,68,.6);
+      opacity:0; pointer-events:none;
+    }
+    @keyframes ringExpand {
+      0%  { opacity:.7; transform:scale(1); }
+      100%{ opacity:0;  transform:scale(1.12); }
+    }
+    .pulse-ring.active { animation:ringExpand .5s ease-out forwards; }
+
+    .trust-row {
+      display:flex; align-items:center; justify-content:center; gap:.6rem;
+    }
+    .btn-trust {
+      background:none; border:none; cursor:pointer;
+      font-size:.84rem; font-weight:600; color:var(--subtle);
+      font-family:var(--ff-sans);
+      padding:.35rem .7rem; border-radius:8px;
+      transition:color .2s;
+      display:flex; align-items:center; gap:.35rem;
+    }
+    .btn-trust:not(:disabled):hover { color:var(--text); }
+    .btn-trust:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-trust svg { width:14px; height:14px; }
+
+    .countdown-chip {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:28px; height:28px; border-radius:50%;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      font-family:var(--ff-code); font-size:.75rem; font-weight:700;
+      color:var(--subtle);
+      transition:all .3s;
+    }
+    .countdown-chip.ready {
+      background:rgba(34,197,94,.15);
+      border-color:rgba(34,197,94,.4);
+      color:#86EFAC;
+    }
+
+    /* ── Divider ── */
+    .divider { display:flex; align-items:center; gap:.75rem; margin:.25rem 0 .85rem; }
+    .divider-line { flex:1; height:1px; background:rgba(255,255,255,.06); }
+    .divider-text { font-size:.68rem; color:var(--muted); font-family:var(--ff-sans); }
+
+    /* ── Report bar ── */
+    .report-bar {
+      display:flex; align-items:center; gap:.6rem;
+      padding:.75rem 1rem;
+      background:rgba(59,130,246,.06);
+      border:1px solid rgba(59,130,246,.18);
+      border-radius:12px;
+      cursor:pointer;
+      transition:background .2s, border-color .2s;
+      text-decoration:none;
+    }
+    .report-bar:hover { background:rgba(59,130,246,.12); border-color:rgba(59,130,246,.35); }
+    .report-icon {
+      width:34px; height:34px; border-radius:9px;
+      background:rgba(59,130,246,.15);
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .report-icon svg { width:17px; height:17px; color:#60A5FA; }
+    .report-text .rt { font-size:.8rem; font-weight:600; color:var(--text); font-family:var(--ff-sans); }
+    .report-text .rs { font-size:.68rem; color:var(--muted); font-family:var(--ff-sans); }
+    .report-bar svg.arrow { width:16px; height:16px; color:var(--muted); margin-left:auto; }
+
+    /* ── Blocked toast ── */
+    .blocked-toast {
+      display:none;
+      align-items:center; gap:.6rem;
+      padding:.75rem 1rem;
+      background:rgba(239,68,68,.12);
+      border:1px solid rgba(239,68,68,.35);
+      border-radius:12px;
+      margin-top:.75rem;
+      font-size:.8rem; font-family:var(--ff-sans);
+      color:#FCA5A5;
+      animation:fadeSlideDown .3s ease;
+    }
+    .blocked-toast.show { display:flex; }
+    .blocked-toast svg { width:16px; height:16px; flex-shrink:0; }
+
+    /* Trusted toast */
+    .trusted-toast {
+      display:none;
+      align-items:center; gap:.6rem;
+      padding:.75rem 1rem;
+      background:rgba(34,197,94,.1);
+      border:1px solid rgba(34,197,94,.3);
+      border-radius:12px;
+      margin-top:.75rem;
+      font-size:.8rem; font-family:var(--ff-sans);
+      color:#86EFAC;
+      animation:fadeSlideDown .3s ease;
+    }
+    .trusted-toast.show { display:flex; }
+    .trusted-toast svg { width:16px; height:16px; flex-shrink:0; }
+
+    /* ── Pulse util ── */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(59,130,246,.3); border-radius:4px; }
+
+    /* ── AI analysis strip ── */
+    .ai-strip {
+      display:flex; align-items:center; gap:.5rem;
+      padding:.45rem .8rem;
+      background:rgba(168,85,247,.08);
+      border:1px solid rgba(168,85,247,.2);
+      border-radius:9px;
+      font-size:.7rem; color:#C4B5FD;
+      font-family:var(--ff-code);
+      margin-bottom:.9rem;
+    }
+    .ai-strip svg { width:12px; height:12px; flex-shrink:0; }
+    .spinner-ring {
+      width:10px; height:10px; border-radius:50%;
+      border:2px solid rgba(168,85,247,.3); border-top-color:#A855F7;
+      animation:spin .8s linear infinite; flex-shrink:0;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+  </style>
+</head>
+
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="orb orb-red" aria-hidden="true"></div>
+  <div class="orb orb-blue" aria-hidden="true"></div>
+
+  <div class="phone-wrap" role="main">
+
+    <!-- Safety Banner -->
+    <div class="safety-banner" role="alert" aria-label="Security reminder">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+      </svg>
+      Bank officials never ask for your PIN or OTP
+      <div class="safety-dot" aria-hidden="true"></div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card">
+
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="brand-row">
+          <div class="brand-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path fill-rule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">UPI Shield</div>
+            <div class="brand-sub">Fraud Detection AI</div>
+          </div>
+        </div>
+        <div class="alert-pill" role="status" aria-label="Fraud alert active">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+          </svg>
+          FRAUD ALERT
+        </div>
+      </div>
+
+      <!-- AI strip -->
+      <div class="ai-strip" role="status" aria-label="AI analysis in progress">
+        <div class="spinner-ring" aria-hidden="true"></div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16.5 7.5h-9v9h9v-9z"/>
+          <path fill-rule="evenodd" d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75h-2.25V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z" clip-rule="evenodd"/>
+        </svg>
+        AI analysis complete · Processed in 38ms
+      </div>
+
+      <!-- Payee Row -->
+      <div class="payee-row" role="region" aria-label="Transaction details">
+        <div class="payee-avatar" aria-hidden="true">R</div>
+        <div class="payee-info">
+          <div class="payee-name">Rahul Trading Co.</div>
+          <div class="payee-vpa">rahultrading92@ybl</div>
+          <div>
+            <span class="payee-badge badge-warning" id="payee-badge" role="img" aria-label="Unverified recipient">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+              </svg>
+              Unverified ID
+            </span>
+          </div>
+        </div>
+        <div class="amount-chip">
+          <div class="amount-val">₹8,500</div>
+          <div class="amount-label">Transfer</div>
+        </div>
+      </div>
+
+      <!-- Risk Meter -->
+      <div class="risk-section" role="region" aria-label="Risk assessment">
+        <div class="gauge-wrap" aria-label="Risk score 85 out of 100 — High risk">
+          <svg viewBox="0 0 200 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="riskGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stop-color="#22C55E"/>
+                <stop offset="50%"  stop-color="#F59E0B"/>
+                <stop offset="100%" stop-color="#EF4444"/>
+              </linearGradient>
+            </defs>
+            <!-- Track -->
+            <path class="gauge-track"
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round" fill="none"/>
+            <!-- Fill -->
+            <path id="gauge-fill-path"
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              stroke="url(#riskGrad)" stroke-width="14" stroke-linecap="round" fill="none"
+              stroke-dasharray="251.32"
+              stroke-dashoffset="251.32"
+              style="transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);"/>
+            <!-- Tick marks -->
+            <line x1="100" y1="22" x2="100" y2="35" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+            <line x1="20"  y1="100" x2="30"  y2="100" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+            <line x1="180" y1="100" x2="170" y2="100" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+            <!-- Labels -->
+            <text x="15"  y="118" font-family="Fira Code,monospace" font-size="8" fill="#22C55E" text-anchor="middle">0</text>
+            <text x="100" y="18"  font-family="Fira Code,monospace" font-size="8" fill="#F59E0B" text-anchor="middle">50</text>
+            <text x="185" y="118" font-family="Fira Code,monospace" font-size="8" fill="#EF4444" text-anchor="middle">100</text>
+          </svg>
+          <div class="gauge-score">
+            <div class="gauge-num" id="gauge-num" aria-live="polite">0</div>
+            <div class="gauge-label">/ 100 Risk Score</div>
+          </div>
+        </div>
+        <div class="gauge-caption">⚠ High-risk transaction detected by AI model</div>
+        <div class="risk-ticks" role="list" aria-label="Risk level legend">
+          <div class="tick" role="listitem"><div class="tick-dot tick-low"></div>Low (0–39)</div>
+          <div class="tick" role="listitem"><div class="tick-dot tick-medium"></div>Medium (40–69)</div>
+          <div class="tick" role="listitem"><div class="tick-dot tick-high"></div>High (70–100)</div>
+        </div>
+      </div>
+
+      <!-- Tooltip Trigger -->
+      <button class="tooltip-trigger" id="tooltip-btn" aria-expanded="false" aria-controls="tooltip-panel"
+              onclick="toggleTooltip()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+        </svg>
+        Why am I seeing this?
+        <svg class="tooltip-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 01-1.06 0l-7.5-7.5a.75.75 0 011.06-1.06L12 14.69l6.97-6.97a.75.75 0 111.06 1.06l-7.5 7.5z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+
+      <!-- Tooltip Panel -->
+      <div id="tooltip-panel" class="tooltip-panel" role="region" aria-label="AI reasoning explanation">
+        <h4>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16.5 7.5h-9v9h9v-9z"/>
+            <path fill-rule="evenodd" d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75h-2.25V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z" clip-rule="evenodd"/>
+          </svg>
+          AI Reasoning (XAI)
+        </h4>
+        <ul class="reason-list" role="list">
+          <li>
+            <span class="reason-icon">🆕</span>
+            <span><strong>First-time transfer</strong> to this recipient — no prior transaction history found</span>
+          </li>
+          <li>
+            <span class="reason-icon">📍</span>
+            <span><strong>High-risk recipient location</strong> — VPA registered in a flagged fraud hotspot region</span>
+          </li>
+          <li>
+            <span class="reason-icon">⏰</span>
+            <span><strong>Unusual transaction time</strong> — sent at 2:47 AM, outside your normal pattern (9 AM–8 PM)</span>
+          </li>
+          <li>
+            <span class="reason-icon">💸</span>
+            <span><strong>Atypical amount</strong> — ₹8,500 is 4× higher than your average UPI payment of ₹2,100</span>
+          </li>
+          <li>
+            <span class="reason-icon">📵</span>
+            <span><strong>Unverified ID</strong> — payee VPA has never appeared in trusted merchant databases</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="actions" role="group" aria-label="Transaction action buttons">
+
+        <!-- STOP PAYMENT -->
+        <div style="position:relative;">
+          <div class="pulse-ring" id="pulse-ring" aria-hidden="true"></div>
+          <button class="btn-stop" id="btn-stop" onclick="stopPayment()" aria-label="Stop this payment">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd"/>
+            </svg>
+            Stop Payment
+          </button>
+        </div>
+
+        <!-- TRUST RECIPIENT -->
+        <div class="trust-row">
+          <button class="btn-trust" id="btn-trust" onclick="trustRecipient()" disabled
+                  aria-label="Trust this recipient (available after countdown)" aria-disabled="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+            </svg>
+            Trust this Recipient
+          </button>
+          <div class="countdown-chip" id="countdown-chip" aria-live="polite" aria-label="Countdown timer">5</div>
+        </div>
+      </div>
+
+      <!-- Toasts -->
+      <div class="blocked-toast" id="blocked-toast" role="alert" aria-live="assertive">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd"/>
+        </svg>
+        <div>
+          <strong>Payment blocked.</strong> Transaction has been stopped by AI Shield.
+          Your money is safe.
+        </div>
+      </div>
+
+      <div class="trusted-toast" id="trusted-toast" role="alert" aria-live="assertive">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+        </svg>
+        <div>
+          <strong>Recipient trusted.</strong> Payment will proceed. This recipient is added to your safe list.
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider" aria-hidden="true">
+        <div class="divider-line"></div>
+        <div class="divider-text">Need help?</div>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Report Bar -->
+      <a href="#" class="report-bar" id="report-btn" role="button" aria-label="Report fraud or contact live support">
+        <div class="report-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <div class="report-text">
+          <div class="rt">Report Fraud · Live Support</div>
+          <div class="rs">Connect instantly with a fraud specialist</div>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="arrow" aria-hidden="true">
+          <path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 01-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 011.06-1.06l7.5 7.5z" clip-rule="evenodd"/>
+        </svg>
+      </a>
+
+    </div><!-- /card -->
+  </div><!-- /phone-wrap -->
+
+  <script>
+    // ── Risk Score Gauge ──────────────────────────────────────────────
+    const TARGET_SCORE = 85;
+    const TOTAL_ARC = 251.32; // half-circle arc length
+
+    function animateGauge() {
+      const fill = document.getElementById('gauge-fill-path');
+      const num  = document.getElementById('gauge-num');
+
+      // Animate number counter
+      let current = 0;
+      const duration = 1400; // ms
+      const step = TARGET_SCORE / (duration / 16);
+      const interval = setInterval(() => {
+        current = Math.min(current + step, TARGET_SCORE);
+        num.textContent = Math.round(current);
+
+        // Color transition
+        const pct = current / 100;
+        if (pct < 0.4)       num.style.color = '#22C55E';
+        else if (pct < 0.7)  num.style.color = '#F59E0B';
+        else                 num.style.color = '#EF4444';
+
+        if (current >= TARGET_SCORE) clearInterval(interval);
+      }, 16);
+
+      // Animate arc
+      const offset = TOTAL_ARC - (TARGET_SCORE / 100) * TOTAL_ARC;
+      setTimeout(() => { fill.style.strokeDashoffset = offset; }, 80);
+    }
+
+    // ── Tooltip ───────────────────────────────────────────────────────
+    function toggleTooltip() {
+      const panel = document.getElementById('tooltip-panel');
+      const btn   = document.getElementById('tooltip-btn');
+      const isOpen = panel.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    // ── Countdown Timer ───────────────────────────────────────────────
+    let countdownVal = 5;
+    let countdownTimer = null;
+
+    function startCountdown() {
+      const chip = document.getElementById('countdown-chip');
+      const btn  = document.getElementById('btn-trust');
+      countdownTimer = setInterval(() => {
+        countdownVal--;
+        chip.textContent = countdownVal;
+        if (countdownVal <= 0) {
+          clearInterval(countdownTimer);
+          chip.textContent = '✓';
+          chip.classList.add('ready');
+          btn.disabled = false;
+          btn.setAttribute('aria-disabled', 'false');
+        }
+      }, 1000);
+    }
+
+    // ── Stop Payment ──────────────────────────────────────────────────
+    function stopPayment() {
+      const btn   = document.getElementById('btn-stop');
+      const toast = document.getElementById('blocked-toast');
+      const ring  = document.getElementById('pulse-ring');
+      // Prevent action if already blocked
+      if (btn.disabled) return;
+
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor  = 'not-allowed';
+
+      // Shake + haptic pulse ring animation
+      btn.classList.add('shake-anim');
+      ring.classList.add('active');
+      setTimeout(() => { btn.classList.remove('shake-anim'); }, 500);
+      setTimeout(() => { ring.classList.remove('active'); }, 500);
+
+      toast.classList.add('show');
+      // Stop countdown
+      if (countdownTimer) clearInterval(countdownTimer);
+    }
+
+    // ── Trust Recipient ───────────────────────────────────────────────
+    function trustRecipient() {
+      if (document.getElementById('btn-trust').disabled) return;
+      const toast = document.getElementById('trusted-toast');
+      const badge = document.getElementById('payee-badge');
+
+      // Upgrade badge to verified
+      badge.className = 'payee-badge badge-verified';
+      badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:10px;height:10px;" aria-hidden="true">
+        <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.491 4.491 0 01-3.497-1.307 4.491 4.491 0 01-1.307-3.497A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.492 4.492 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+      </svg> Verified`;
+
+      toast.classList.add('show');
+    }
+
+    // ── On load ───────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      // Short delay so animation is visible
+      setTimeout(animateGauge, 400);
+      setTimeout(startCountdown, 600);
+    });
+  </script>
+</body>
+</html>

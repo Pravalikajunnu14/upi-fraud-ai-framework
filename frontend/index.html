@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UPI Shield — Secure Login</title>
+  <meta name="description" content="Login to UPI Shield — AI-Powered Real-Time Fraud Detection System" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* Animated background grid */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(59, 130, 246, .06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, .06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridPan 25s linear infinite;
+    }
+
+    @keyframes gridPan {
+      from {
+        background-position: 0 0
+      }
+
+      to {
+        background-position: 48px 48px
+      }
+    }
+
+    /* Glowing orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.35;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .orb-1 {
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(#3B82F6, #2563EB, transparent);
+      top: -160px;
+      left: -160px;
+      animation: float1 9s ease-in-out infinite;
+    }
+
+    .orb-2 {
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(#F97316, #ea580c, transparent);
+      bottom: -120px;
+      right: -120px;
+      animation: float2 11s ease-in-out infinite;
+    }
+
+    @keyframes float1 {
+
+      0%,
+      100% {
+        transform: translate(0, 0)
+      }
+
+      50% {
+        transform: translate(45px, 35px)
+      }
+    }
+
+    @keyframes float2 {
+
+      0%,
+      100% {
+        transform: translate(0, 0)
+      }
+
+      50% {
+        transform: translate(-35px, -25px)
+      }
+    }
+
+    /* Card */
+    .login-wrap {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 445px;
+      padding: 1rem;
+    }
+
+    .login-card {
+      background: rgba(10, 15, 30, 0.88);
+      border: 1px solid rgba(59, 130, 246, 0.28);
+      border-radius: 24px;
+      padding: 2.5rem 2.2rem;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    /* Brand */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      margin-bottom: 2rem;
+    }
+
+    .brand-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #3B82F6, #2563EB);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 28px rgba(59, 130, 246, 0.45);
+      flex-shrink: 0;
+    }
+
+    .brand-icon svg {
+      width: 26px;
+      height: 26px;
+      color: #fff;
+    }
+
+    .brand-text h1 {
+      font-family: 'Fira Code', monospace;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0;
+      text-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    }
+
+    .brand-text p {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin: 0;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    /* Security bar */
+    .security-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.22);
+      font-size: 0.75rem;
+      color: #60A5FA;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .security-bar svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .sec-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2.5s infinite;
+      margin-left: auto;
+    }
+
+    .login-title {
+      font-family: 'Fira Code', monospace;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #f0f6ff;
+      margin-bottom: 0.25rem;
+    }
+
+    .login-sub {
+      color: #64748b;
+      font-size: 0.84rem;
+      margin-bottom: 1.75rem;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1.5rem;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 0.25rem;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.5rem;
+      text-align: center;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      background: transparent;
+      color: #64748b;
+      transition: all 0.22s;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .tab:hover {
+      color: #94a3b8;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, #3B82F6, #2563EB);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(59, 130, 246, 0.4);
+    }
+
+    .tab:focus-visible {
+      outline: 2px solid #3B82F6;
+      outline-offset: 2px;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 1.1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 0.4rem;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(59, 130, 246, 0.22);
+      background: rgba(255, 255, 255, 0.04);
+      color: #f0f6ff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    .form-group input::placeholder {
+      color: #475569;
+    }
+
+    .form-group select option {
+      background: #0a0f1e;
+    }
+
+    /* Forgot password link */
+    .forgot-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -0.6rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .forgot-link {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #60A5FA;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: 'Fira Sans', sans-serif;
+      transition: color 0.2s;
+    }
+
+    .forgot-link:hover {
+      color: #93C5FD;
+      text-decoration: underline;
+    }
+
+    .forgot-link:focus-visible {
+      outline: 2px solid #3B82F6;
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+
+    /* Forgot panel */
+    .forgot-panel {
+      display: none;
+      margin-top: 0.5rem;
+      padding: 1rem 1.2rem;
+      background: rgba(59, 130, 246, 0.07);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+
+    .forgot-panel.open {
+      display: block;
+      animation: slideUp 0.22s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .forgot-panel-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .forgot-panel h4 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #93C5FD;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .forgot-panel h4 svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .forgot-panel p {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 0.75rem;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .forgot-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-reset-opt {
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid rgba(59, 130, 246, 0.28);
+      background: rgba(59, 130, 246, 0.10);
+      color: #60A5FA;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Fira Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-reset-opt svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .btn-reset-opt:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .btn-close-forgot {
+      background: none;
+      border: none;
+      color: #475569;
+      cursor: pointer;
+      font-size: 0.72rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-family: 'Fira Sans', sans-serif;
+      transition: color 0.2s;
+    }
+
+    .btn-close-forgot:hover {
+      color: #94a3b8;
+    }
+
+    .btn-close-forgot svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Primary button */
+    .btn-login {
+      width: 100%;
+      padding: 0.85rem;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #3B82F6, #2563EB);
+      color: #fff;
+      font-size: 0.975rem;
+      font-weight: 700;
+      box-shadow: 0 8px 28px rgba(59, 130, 246, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .btn-login svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(59, 130, 246, 0.5);
+    }
+
+    .btn-login:active {
+      transform: translateY(0);
+    }
+
+    .btn-login:focus-visible {
+      outline: 2px solid #60A5FA;
+      outline-offset: 3px;
+    }
+
+    .btn-login:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      margin-bottom: 1rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+
+    /* Admin contact info */
+    .admin-msg {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(59, 130, 246, 0.12);
+      border-radius: 8px;
+      color: #93C5FD;
+      font-size: 0.77rem;
+      display: none;
+      font-family: 'Fira Code', monospace;
+      line-height: 1.5;
+    }
+
+    /* Demo hint */
+    .demo-hint {
+      margin-top: 1.25rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(59, 130, 246, 0.15);
+      font-size: 0.76rem;
+      color: #475569;
+      text-align: center;
+      font-family: 'Fira Sans', sans-serif;
+    }
+
+    .demo-hint strong {
+      color: #60A5FA;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+
+  <div class="login-wrap">
+    <div class="login-card" role="main">
+
+      <!-- Brand -->
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd"
+              d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.704-3.079z"
+              clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>UPI Shield</h1>
+          <p>AI-Powered Fraud Detection System</p>
+        </div>
+      </div>
+
+      <!-- Security bar -->
+      <div class="security-bar" role="status" aria-label="Secure connection active">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd"
+            d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
+            clip-rule="evenodd" />
+        </svg>
+        256-bit TLS Encrypted &nbsp;·&nbsp; Secure Session
+        <div class="sec-dot" aria-hidden="true"></div>
+      </div>
+
+      <h2 class="login-title">Welcome back</h2>
+      <p class="login-sub">Sign in to monitor real-time UPI transactions</p>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist" aria-label="Authentication mode">
+        <button class="tab active" id="tab-login" role="tab" aria-selected="true" onclick="switchTab('login')">Sign
+          In</button>
+        <button class="tab" id="tab-register" role="tab" aria-selected="false"
+          onclick="switchTab('register')">Register</button>
+      </div>
+
+      <div id="alert-box" class="alert" role="alert" aria-live="polite"></div>
+
+      <!-- ── Login Form ─────────────────────────── -->
+      <form id="form-login" onsubmit="handleLogin(event)" novalidate>
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input type="text" id="login-username" placeholder="Enter your username" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password" required
+            autocomplete="current-password" />
+        </div>
+
+        <!-- Forgot password link -->
+        <div class="forgot-row">
+          <button type="button" class="forgot-link" onclick="toggleForgot()" id="forgot-btn" aria-expanded="false"
+            aria-controls="forgot-panel">
+            Forgot password?
+          </button>
+        </div>
+
+        <!-- Forgot password panel -->
+        <div id="forgot-panel" class="forgot-panel" role="region" aria-label="Password reset options">
+          <div class="forgot-panel-top">
+            <h4>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd"
+                  d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
+                  clip-rule="evenodd" />
+              </svg>
+              Reset Password
+            </h4>
+            <button type="button" class="btn-close-forgot" onclick="toggleForgot()" aria-label="Close reset panel">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd"
+                  d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+                  clip-rule="evenodd" />
+              </svg>
+              Close
+            </button>
+          </div>
+          <p>To reset your password, choose an option below:</p>
+          <div class="forgot-actions">
+            <button type="button" class="btn-reset-opt" onclick="contactAdmin()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd"
+                  d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
+                  clip-rule="evenodd" />
+              </svg>
+              Contact Admin
+            </button>
+            <button type="button" class="btn-reset-opt" onclick="switchTab('register'); toggleForgot()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M6.25 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM3.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM19.75 7.5a.75.75 0 00-1.5 0v2.25H16a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H22a.75.75 0 000-1.5h-2.25V7.5z" />
+              </svg>
+              Create New Account
+            </button>
+          </div>
+          <div class="admin-msg" id="admin-contact-msg">
+            <strong>Admin contact:</strong> Ask your system administrator to reset your password in the backend user
+            management.
+          </div>
+        </div>
+
+        <button type="submit" class="btn-login" id="btn-login-submit">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd"
+              d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z"
+              clip-rule="evenodd" />
+          </svg>
+          Sign In Securely
+        </button>
+      </form>
+
+      <!-- ── Register Form ──────────────────────── -->
+      <form id="form-register" style="display:none" onsubmit="handleRegister(event)" novalidate>
+        <div class="form-group">
+          <label for="reg-username">Username</label>
+          <input type="text" id="reg-username" placeholder="Choose a username" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label for="reg-email">
+            Email
+            <span style="color:#475569;font-size:.72rem;font-weight:400;margin-left:.3rem;">— fraud alerts sent
+              here</span>
+          </label>
+          <input type="email" id="reg-email" placeholder="your@email.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" placeholder="Choose a strong password" required
+            autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label for="reg-role">Role</label>
+          <select id="reg-role">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-login" id="btn-reg-submit">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M6.25 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM3.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM19.75 7.5a.75.75 0 00-1.5 0v2.25H16a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H22a.75.75 0 000-1.5h-2.25V7.5z" />
+          </svg>
+          Create Account
+        </button>
+      </form>
+
+      <div class="demo-hint" role="note">
+        Quick demo: register with role <strong>Admin</strong> for full access to model retraining &amp; analytics.
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script>
+    function toggleForgot() {
+      const panel = document.getElementById('forgot-panel');
+      const btn = document.getElementById('forgot-btn');
+      const isOpen = panel.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(isOpen));
+      if (!isOpen) document.getElementById('admin-contact-msg').style.display = 'none';
+    }
+    function contactAdmin() {
+      document.getElementById('admin-contact-msg').style.display = 'block';
+    }
+  </script>
+</body>
+
+</html>
