@@ -8,7 +8,7 @@
  *                  OR populates user info in the sidebar.
  */
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://upi-fraud-backend-x2x4.onrender.com";
 
 // ── Token helpers ──────────────────────────────────────────────────
 function getToken()          { return localStorage.getItem("upi_token"); }
