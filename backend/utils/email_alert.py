@@ -190,11 +190,18 @@ def send_fraud_alert(txn_id: str, amount: float, city: str,
         msg["To"]      = recipient
         msg.attach(MIMEText(html, "html"))
 
-        with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(sender, password)
-            server.sendmail(sender, recipient, msg.as_string())
+        if Config.SMTP_PORT == 465:
+            # Native SSL
+            with smtplib.SMTP_SSL(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
+                server.login(sender, password)
+                server.sendmail(sender, recipient, msg.as_string())
+        else:
+            # STARTTLS
+            with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(sender, password)
+                server.sendmail(sender, recipient, msg.as_string())
 
         logger.info(
             f"[EmailAlert] ✅ {alert_type} alert sent → {recipient} "

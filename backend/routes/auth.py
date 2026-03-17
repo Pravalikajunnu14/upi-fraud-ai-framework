@@ -122,8 +122,7 @@ def test_alert():
         target=send_fraud_alert,
         args=("TEST-TXN001", 99999.00, "Mumbai", "testpayee@upi",
               92.5, "High", user_email),
-        kwargs={"combined_score": 88.0, "alert_type": "Fraud"},
-        daemon=True
+        kwargs={"combined_score": 88.0, "alert_type": "Fraud"}
     ).start()
 
     logger.info(f"[TestAlert] Test fraud alert email triggered for user '{username}' → {user_email}")

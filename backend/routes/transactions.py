@@ -124,8 +124,7 @@ def check_transaction():
             kwargs={
                 "combined_score": combined_score,
                 "alert_type":     final_label,   # "Fraud" or "Anomaly"
-            },
-            daemon=True
+            }
         ).start()
 
 

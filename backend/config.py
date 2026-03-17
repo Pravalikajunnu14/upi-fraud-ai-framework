@@ -17,4 +17,4 @@ class Config:
     ALERT_EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "")
     ALERT_EMAIL_TO       = os.getenv("ALERT_EMAIL_TO", "")
     SMTP_HOST            = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT            = int(os.getenv("SMTP_PORT", 587))
+    SMTP_PORT            = int(os.getenv("SMTP_PORT", 465))
