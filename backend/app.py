@@ -8,6 +8,9 @@ Run with:
     python app.py
 """
 
+import eventlet
+eventlet.monkey_patch()
+
 import os
 import sys
 import datetime
