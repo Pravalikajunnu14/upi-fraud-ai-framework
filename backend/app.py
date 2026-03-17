@@ -166,20 +166,23 @@ if __name__ == "__main__":
     from utils.logger import logger
     from utils.fraud_engine import cache_stats
 
+    # Render uses the PORT environment variable to define where the app answers
+    port = int(os.environ.get("PORT", 5000))
+
     if Config.DEBUG:
         # Development mode — Flask dev server with SocketIO
-        logger.info("[DEV] Starting Flask dev server on http://localhost:5000")
-        socketio.run(app, host="0.0.0.0", port=5000, debug=True,
+        logger.info(f"[DEV] Starting Flask dev server on http://localhost:{port}")
+        socketio.run(app, host="0.0.0.0", port=port, debug=True,
                      use_reloader=False, allow_unsafe_werkzeug=True)
     else:
         # Production mode — Waitress WSGI (Windows-compatible)
         try:
             from waitress import serve
-            logger.info("[PROD] Starting Waitress server on http://0.0.0.0:5000")
+            logger.info(f"[PROD] Starting Waitress server on http://0.0.0.0:{port}")
             logger.info(f"[PROD] Prediction cache: {cache_stats()}")
-            serve(app, host="0.0.0.0", port=5000, threads=8)
+            serve(app, host="0.0.0.0", port=port, threads=8)
         except ImportError:
             logger.warning("Waitress not installed. Run: pip install waitress")
             logger.info("Falling back to Flask dev server")
-            socketio.run(app, host="0.0.0.0", port=5000, debug=False,
+            socketio.run(app, host="0.0.0.0", port=port, debug=False,
                          use_reloader=False, allow_unsafe_werkzeug=True)
