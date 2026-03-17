@@ -115,17 +115,16 @@ def check_transaction():
         )
         # Send real-time email alert for both Fraud and Anomaly
         claims     = get_jwt()
-        user_email = claims.get("email", "")
-        threading.Thread(
-            target=send_fraud_alert,
-            args=(txn_id, txn_payload["amount"], txn_payload["city"],
-                  upi_id, result["fraud_score"], result["risk_level"],
-                  user_email),
-            kwargs={
-                "combined_score": combined_score,
-                "alert_type":     final_label,   # "Fraud" or "Anomaly"
-            }
-        ).start()
+        user_email = claims.get("email", "") if claims else ""
+        
+        # Send synchronously to prevent WSGI from killing the background thread
+        send_fraud_alert(
+            txn_id, txn_payload["amount"], txn_payload["city"],
+            upi_id, result["fraud_score"], result["risk_level"],
+            user_email,
+            combined_score=combined_score,
+            alert_type=final_label
+        )
 
 
     logger.info(
