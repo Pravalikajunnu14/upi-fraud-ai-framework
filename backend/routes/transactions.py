@@ -34,7 +34,7 @@ CITY_COORDS = {
 @txn_bp.route("/check", methods=["POST"])
 @jwt_required()
 def check_transaction():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
     if not data:
         return jsonify({"error": "No JSON body"}), 400
@@ -185,7 +185,7 @@ def list_transactions():
 @txn_bp.route("/block/<txn_id>", methods=["POST"])
 @jwt_required()
 def block_transaction(txn_id):
-    user_id  = get_jwt_identity()
+    user_id  = int(get_jwt_identity())
     claims   = get_jwt()
     username = claims.get("username", str(user_id))
     txn = query("SELECT * FROM transactions WHERE txn_id = ?", (txn_id,), one=True)
