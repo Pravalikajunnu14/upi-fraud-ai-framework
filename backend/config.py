@@ -13,8 +13,8 @@ class Config:
     ML_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "models", "fraud_model.pkl")
     ML_FEATURES_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "models", "feature_columns.pkl")
     # ── Email alert config ──────────────────────────────────────
-    ALERT_EMAIL_FROM     = os.getenv("ALERT_EMAIL_FROM", "")
-    ALERT_EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "")
-    ALERT_EMAIL_TO       = os.getenv("ALERT_EMAIL_TO", "")
+    ALERT_EMAIL_FROM     = os.getenv("ALERT_EMAIL_FROM", "junnupravalika59@gmail.com")
+    ALERT_EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "Sreeja@5914")
+    ALERT_EMAIL_TO       = os.getenv("ALERT_EMAIL_TO", "junnupravalika59@gmail.com")
     SMTP_HOST            = os.getenv("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT            = int(os.getenv("SMTP_PORT", 587))
