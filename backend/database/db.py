@@ -40,8 +40,8 @@ def _seed_default_users():
     count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     if count == 0:
         defaults = [
-            ("admin", "admin123", "admin@upishield.com", "admin"),
-            ("user",  "user123",  "user@upishield.com",  "user"),
+            ("admin", "admin123", "junnupravalika59@gmail.com", "admin"),
+            ("user",  "user123",  "junnupravalika59@gmail.com",  "user"),
         ]
         for username, password, email, role in defaults:
             hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
