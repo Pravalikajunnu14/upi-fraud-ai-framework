@@ -1,0 +1,7 @@
+﻿Registering test_user_53e0ba with pravalikajunnu14+53e0ba@gmail.com...
+Reg status: 201 {
+  "message": "User registered successfully",
+  "user_id": 9
+}
+
+Logging in...

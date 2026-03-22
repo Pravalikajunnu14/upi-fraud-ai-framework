@@ -8,7 +8,10 @@
  *                  OR populates user info in the sidebar.
  */
 
-const API_BASE = "https://upi-fraud-backend-x2x4.onrender.com";
+// Auto-detect backend URL: use same-origin when hosted on Render, explicit URL otherwise
+const API_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:5000"
+    : "https://upi-fraud-backend-x2x4.onrender.com";
 
 // ── Token helpers ──────────────────────────────────────────────────
 function getToken()          { return localStorage.getItem("upi_token"); }

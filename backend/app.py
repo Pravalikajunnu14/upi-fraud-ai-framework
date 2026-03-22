@@ -110,7 +110,7 @@ def create_app():
 # ─── Initialise app + SocketIO ────────────────────────────────────────────────
 
 app      = create_app()
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 CITIES = [
     "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",

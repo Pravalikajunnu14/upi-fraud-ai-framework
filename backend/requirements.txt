@@ -11,3 +11,4 @@ numpy==1.26.4
 joblib==1.4.2
 eventlet==0.36.1
 gunicorn==22.0.0
+waitress==3.0.0

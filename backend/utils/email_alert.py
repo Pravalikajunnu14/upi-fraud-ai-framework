@@ -192,12 +192,12 @@ def send_fraud_alert(txn_id: str, amount: float, city: str,
 
         if Config.SMTP_PORT == 465:
             # Native SSL
-            with smtplib.SMTP_SSL(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
+            with smtplib.SMTP_SSL(Config.SMTP_HOST, Config.SMTP_PORT, timeout=30) as server:
                 server.login(sender, password)
                 server.sendmail(sender, recipient, msg.as_string())
         else:
             # STARTTLS
-            with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
+            with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=30) as server:
                 server.ehlo()
                 server.starttls()
                 server.login(sender, password)

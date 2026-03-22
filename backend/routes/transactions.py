@@ -113,18 +113,17 @@ def check_transaction():
             "INSERT INTO fraud_alerts (txn_id, fraud_score, risk_level) VALUES (?,?,?)",
             (txn_id, combined_score, result["risk_level"])
         )
-        # Send real-time email alert for both Fraud and Anomaly
+        # Send real-time email alert in background thread (non-blocking)
         claims     = get_jwt()
         user_email = claims.get("email", "") if claims else ""
-        
-        # Send synchronously to prevent WSGI from killing the background thread
-        send_fraud_alert(
-            txn_id, txn_payload["amount"], txn_payload["city"],
-            upi_id, result["fraud_score"], result["risk_level"],
-            user_email,
-            combined_score=combined_score,
-            alert_type=final_label
-        )
+        threading.Thread(
+            target=send_fraud_alert,
+            args=(txn_id, txn_payload["amount"], txn_payload["city"],
+                  upi_id, result["fraud_score"], result["risk_level"],
+                  user_email),
+            kwargs={"combined_score": combined_score, "alert_type": final_label},
+            daemon=True
+        ).start()
 
 
     logger.info(
