@@ -163,14 +163,14 @@ def send_fraud_alert(txn_id: str, amount: float, city: str,
     # ── Guard: skip if credentials not configured ──────────────────────────────
     if not sender or not password or not recipient:
         logger.warning(
-            "[EmailAlert] Skipped — email credentials not configured in .env. "
+            "[EmailAlert] Skipped - email credentials not configured in .env. "
             "Set ALERT_EMAIL_FROM, ALERT_EMAIL_PASSWORD, ALERT_EMAIL_TO."
         )
         return False
 
     if sender == "your_gmail@gmail.com" or password == "your_app_password_here":
         logger.warning(
-            "[EmailAlert] Skipped — .env still has placeholder values. "
+            "[EmailAlert] Skipped - .env still has placeholder values. "
             "Replace ALERT_EMAIL_FROM and ALERT_EMAIL_PASSWORD with real credentials."
         )
         return False
@@ -204,21 +204,21 @@ def send_fraud_alert(txn_id: str, amount: float, city: str,
                 server.sendmail(sender, recipient, msg.as_string())
 
         logger.info(
-            f"[EmailAlert] ✅ {alert_type} alert sent → {recipient} "
-            f"| TXN: {txn_id} | ₹{amount:,.0f} | Score: {fraud_score}%"
+            f"[EmailAlert] SUCCESS: {alert_type} alert sent to {recipient} "
+            f"| TXN: {txn_id} | INR {amount:,.0f} | Score: {fraud_score}%"
         )
         return True
 
     except smtplib.SMTPAuthenticationError:
         logger.error(
-            "[EmailAlert] ❌ Gmail authentication failed. "
+            "[EmailAlert] ERROR: Gmail authentication failed. "
             "Make sure you are using an App Password, not your regular Gmail password. "
-            "Generate one at: Google Account → Security → 2-Step → App Passwords"
+            "Generate one at: Google Account -> Security -> 2-Step -> App Passwords"
         )
         return False
     except smtplib.SMTPException as e:
-        logger.error(f"[EmailAlert] ❌ SMTP error: {e}")
+        logger.error(f"[EmailAlert] ERROR: SMTP error: {e}")
         return False
     except Exception as e:
-        logger.error(f"[EmailAlert] ❌ Unexpected error: {e}")
+        logger.error(f"[EmailAlert] ERROR: Unexpected error: {e}")
         return False
