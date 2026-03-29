@@ -209,14 +209,11 @@ if __name__ == "__main__":
         socketio.run(app, host="0.0.0.0", port=port, debug=True,
                      use_reloader=False, allow_unsafe_werkzeug=True)
     else:
-        # Production mode — Waitress WSGI (Windows-compatible)
-        try:
-            from waitress import serve
-            logger.info(f"[PROD] Starting Waitress server on http://0.0.0.0:{port}")
-            logger.info(f"[PROD] Prediction cache: {cache_stats()}")
-            serve(app, host="0.0.0.0", port=port, threads=8)
-        except ImportError:
-            logger.warning("Waitress not installed. Run: pip install waitress")
-            logger.info("Falling back to Flask dev server")
+        # Production mode — SocketIO with eventlet (works on Render, Heroku, AWS, etc)
+        logger.info(f"[PROD] Starting SocketIO server on http://0.0.0.0:{port}")
+        logger.info(f"[PROD] Prediction cache: {cache_stats()}")
+        # Use SocketIO for production - works with gunicorn and eventlet
+        socketio.run(app, host="0.0.0.0", port=port, debug=False,
+                     use_reloader=False, log_output=True)
             socketio.run(app, host="0.0.0.0", port=port, debug=False,
                          use_reloader=False, allow_unsafe_werkzeug=True)
