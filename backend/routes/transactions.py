@@ -202,19 +202,23 @@ def check_transaction() -> Tuple[Dict[str, Any], int]:
 
     # ─── Store transaction in database with EXACT TIMESTAMP ──────────────────────
     
-    execute(
-        """INSERT INTO transactions
-           (txn_id, user_id, upi_id, amount, city, latitude, longitude, device_id,
-            hour, day_of_week, transaction_frequency, user_avg_amount,
-            is_new_device, fraud_score, label, risk_level, is_blocked, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (
-            txn_id, user_id, upi_id, amount, city, lat, lng, device_id,
-            hour, day_of_week, transaction_frequency, user_avg_amount,
-            is_new_device, result["fraud_score"], final_label,
-            result["risk_level"], is_blocked, exact_time
+    try:
+        execute(
+            """INSERT INTO transactions
+               (txn_id, user_id, upi_id, amount, city, latitude, longitude, device_id,
+                hour, day_of_week, transaction_frequency, user_avg_amount,
+                is_new_device, fraud_score, label, risk_level, is_blocked, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                txn_id, user_id, upi_id, amount, city, lat, lng, device_id,
+                hour, day_of_week, transaction_frequency, user_avg_amount,
+                is_new_device, result["fraud_score"], final_label,
+                result["risk_level"], is_blocked, exact_time
+            )
         )
-    )
+    except Exception as e:
+        import traceback
+        return jsonify({"error": f"Database error: {str(e)}", "trace": traceback.format_exc()}), 500
     
     # ─── Log to audit trail ────────────────────────────────────────────────────
     
@@ -236,21 +240,29 @@ def check_transaction() -> Tuple[Dict[str, Any], int]:
     # ─── Create fraud alert if detected ─────────────────────────────────────────
     
     if final_label in ("Fraud", "Anomaly"):
-        execute(
-            "INSERT INTO fraud_alerts (txn_id, fraud_score, risk_level, alert_type) VALUES (?,?,?,?)",
-            (txn_id, combined_score, result["risk_level"], final_label)
-        )
-        
+        try:
+            execute(
+                "INSERT INTO fraud_alerts (txn_id, fraud_score, risk_level, alert_type) VALUES (?,?,?,?)",
+                (txn_id, combined_score, result["risk_level"], final_label)
+            )
+        except Exception as e:
+            import traceback
+            return jsonify({"error": f"Fraud alerts DB error: {str(e)}", "trace": traceback.format_exc()}), 500
+
         # Send real-time email alert in background thread (non-blocking)
         claims     = get_jwt()
         user_email = claims.get("email", "") if claims else ""
-        threading.Thread(
-            target=send_fraud_alert,
-            args=(txn_id, amount, city, upi_id, result["fraud_score"],
-                  result["risk_level"], user_email),
-            kwargs={"combined_score": combined_score, "alert_type": final_label},
-            daemon=True
-        ).start()
+        try:
+            threading.Thread(
+                target=send_fraud_alert,
+                args=(txn_id, amount, city, upi_id, result["fraud_score"],
+                      result["risk_level"], user_email),
+                kwargs={"combined_score": combined_score, "alert_type": final_label},
+                daemon=True
+            ).start()
+        except Exception as e:
+            import traceback
+            return jsonify({"error": f"Thread error: {str(e)}", "trace": traceback.format_exc()}), 500
 
     # ─── Log transaction result ────────────────────────────────────────────────
     
