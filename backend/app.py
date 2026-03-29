@@ -136,7 +136,8 @@ def create_app():
 
     @app.errorhandler(500)
     def server_error(e):
-        return jsonify({"error": "Internal server error"}), 500
+        import traceback
+        return jsonify({"error": f"Internal server error: {str(e)}", "trace": traceback.format_exc()}), 500
 
     return app
 
