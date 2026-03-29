@@ -315,7 +315,7 @@ function initLiveFeedSocket() {
 /* ── Model status badge ─────────────────────────────────────────── */
 async function checkModelStatus() {
     try {
-        const res = await fetch("http://localhost:5000/api/health");
+        const res = await fetch("/api/health");
         const data = await res.json();
         const el = document.getElementById("model-status");
         if (el) {
