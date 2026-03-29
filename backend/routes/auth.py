@@ -3,14 +3,16 @@ auth.py  – /api/auth/*
 JWT-based authentication: register, login, me.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 import bcrypt
 import datetime
+from typing import Tuple, Dict, Any
 
 from database.db import query, execute
 from utils.logger import logger
 from utils.email_alert import send_fraud_alert
+from utils.audit import log_audit
 import threading
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -19,7 +21,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 # ─── Register ─────────────────────────────────────────────────────────────────
 
 @auth_bp.route("/register", methods=["POST"])
-def register():
+def register() -> Tuple[Dict[str, Any], int]:
     data = request.get_json()
     if not data:
         return jsonify({"error": "No JSON body"}), 400
@@ -48,6 +50,23 @@ def register():
         "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
         (username, email, hashed, role)
     )
+    
+    # Log audit trail
+    try:
+        client_ip = request.remote_addr if request else None
+        log_audit(
+            user_id=uid,
+            action="USER_SIGNUP",
+            details={
+                "username": username,
+                "email": email,
+                "role": role
+            },
+            ip_address=client_ip
+        )
+    except Exception as e:
+        logger.warning(f"Failed to log signup audit for {username}: {e}")
+    
     logger.info(f"New user registered: {username} ({email}) role={role} id={uid}")
     return jsonify({"message": "User registered successfully", "user_id": uid}), 201
 
@@ -55,7 +74,7 @@ def register():
 # ─── Login ────────────────────────────────────────────────────────────────────
 
 @auth_bp.route("/login", methods=["POST"])
-def login():
+def login() -> Tuple[Dict[str, Any], int]:
     data = request.get_json()
     if not data:
         return jsonify({"error": "No JSON body"}), 400
@@ -71,6 +90,18 @@ def login():
     # Update last login timestamp
     execute("UPDATE users SET last_login = ? WHERE id = ?",
             (datetime.datetime.utcnow().isoformat(), user["id"]))
+    
+    # Log audit trail
+    try:
+        client_ip = request.remote_addr if request else None
+        log_audit(
+            user_id=user["id"],
+            action="USER_LOGIN",
+            details={"username": username},
+            ip_address=client_ip
+        )
+    except Exception as e:
+        logger.warning(f"Failed to log login audit for {username}: {e}")
 
     token = create_access_token(
         identity=str(user["id"]),
@@ -92,7 +123,7 @@ def login():
 
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required()
-def me():
+def me() -> Tuple[Dict[str, Any], int]:
     user_id = get_jwt_identity()
     user = query("SELECT id, username, email, role, created_at, last_login FROM users WHERE id = ?",
                  (user_id,), one=True)
@@ -105,7 +136,7 @@ def me():
 
 @auth_bp.route("/test-alert", methods=["POST"])
 @jwt_required()
-def test_alert():
+def test_alert() -> Tuple[Dict[str, Any], int]:
     """
     POST /api/auth/test-alert
     Sends a test fraud alert email to the currently logged-in user's email.

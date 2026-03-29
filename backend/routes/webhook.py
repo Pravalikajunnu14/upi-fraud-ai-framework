@@ -9,6 +9,7 @@ import hashlib
 import datetime
 import random
 from flask import Blueprint, request, jsonify
+from typing import Tuple, Dict, Any
 from config import Config
 from utils.fraud_engine import run_fraud_check
 from utils.logger import logger
@@ -31,7 +32,7 @@ def _verify_signature(payload: bytes, signature: str, secret: str) -> bool:
 
 
 @webhook_bp.route("/transaction", methods=["POST"])
-def transaction_webhook():
+def transaction_webhook() -> Tuple[Dict[str, Any], int]:
     """
     Accepts real Razorpay / bank webhook payload and runs fraud detection.
 
@@ -113,7 +114,7 @@ def transaction_webhook():
 
 
 @webhook_bp.route("/health", methods=["GET"])
-def webhook_health():
+def webhook_health() -> Tuple[Dict[str, Any], int]:
     """Webhook endpoint health check — no auth required."""
     from utils.fraud_engine import cache_stats
     return jsonify({

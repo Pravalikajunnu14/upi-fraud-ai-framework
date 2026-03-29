@@ -13,12 +13,13 @@ eventlet.monkey_patch()
 
 import os
 import sys
+import uuid
 import datetime
 import random
 import threading
 import time
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request, g
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
@@ -46,19 +47,52 @@ def create_app():
     app.config["DEBUG"]                    = Config.DEBUG
 
     # Extensions
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    # ── CORS: Restrict to configured origins only (safety against cross-origin attacks) ──
+    CORS(app, resources={r"/*": {"origins": Config.ALLOWED_ORIGINS}}, 
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"])
     JWTManager(app)
+
+    # ─── Request Logging Middleware ──────────────────────────────────────────
+    from utils.logger import logger
+    
+    @app.before_request
+    def log_request_start():
+        """Log incoming HTTP request with unique request ID."""
+        g.request_id = str(uuid.uuid4())[:8]
+        g.request_start_time = time.time()
+        
+        # Log request details (skip logs for health checks and static files to reduce noise)
+        if request.path not in ("/api/health", "/"):
+            logger.info(
+                f"[REQ-{g.request_id}] {request.method} {request.path} "
+                f"from {request.remote_addr}"
+            )
+    
+    @app.after_request
+    def log_request_end(response):
+        """Log HTTP response with latency."""
+        if hasattr(g, "request_start_time") and request.path not in ("/api/health", "/"):
+            elapsed = time.time() - g.request_start_time
+            request_id = getattr(g, "request_id", "unknown")
+            logger.info(
+                f"[RES-{request_id}] {response.status_code} "
+                f"completed in {elapsed*1000:.2f}ms"
+            )
+        return response
 
     # ─── Register blueprints ──────────────────────────────────────────────────
     from routes.auth         import auth_bp
     from routes.transactions import txn_bp
     from routes.dashboard    import dash_bp
     from routes.model_routes import model_bp
+    from routes.payments     import payment_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(txn_bp)
     app.register_blueprint(dash_bp)
     app.register_blueprint(model_bp)
+    app.register_blueprint(payment_bp)
 
     from routes.webhook import webhook_bp
     app.register_blueprint(webhook_bp)
@@ -110,7 +144,7 @@ def create_app():
 # ─── Initialise app + SocketIO ────────────────────────────────────────────────
 
 app      = create_app()
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins=Config.ALLOWED_ORIGINS, async_mode="eventlet")
 
 CITIES = [
     "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",

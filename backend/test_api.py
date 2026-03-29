@@ -19,5 +19,5 @@ try:
     print("\nResponse:")
     for key, value in result.items():
         print(f"{key}: {value}")
-except:
-    print("Raw Response:", response.text)
+except ValueError as e:
+    print(f"Raw Response: {response.text}\nError: {e}")

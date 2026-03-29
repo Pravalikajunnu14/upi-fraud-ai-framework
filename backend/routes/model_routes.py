@@ -9,6 +9,7 @@ import json
 import subprocess
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
+from typing import Tuple, Dict, Any, Optional
 
 model_bp = Blueprint("model", __name__, url_prefix="/api/model")
 
@@ -16,7 +17,7 @@ ML_DIR       = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 METRICS_PATH = os.path.join(ML_DIR, "models", "model_metrics.json")
 
 
-def _require_admin():
+def _require_admin() -> Optional[Tuple[Dict[str, Any], int]]:
     claims = get_jwt()
     if claims.get("role") != "admin":
         return jsonify({"error": "Admin access required"}), 403
@@ -27,7 +28,7 @@ def _require_admin():
 
 @model_bp.route("/retrain", methods=["POST"])
 @jwt_required()
-def retrain():
+def retrain() -> Tuple[Dict[str, Any], int]:
     err = _require_admin()
     if err:
         return err
@@ -83,7 +84,7 @@ def retrain():
 
 @model_bp.route("/metrics", methods=["GET"])
 @jwt_required()
-def metrics():
+def metrics() -> Tuple[Dict[str, Any], int]:
     if not os.path.exists(METRICS_PATH):
         return jsonify({"error": "Model not trained yet."}), 404
     with open(METRICS_PATH) as f:
@@ -95,7 +96,7 @@ def metrics():
 
 @model_bp.route("/feature-importance", methods=["GET"])
 @jwt_required()
-def feature_importance():
+def feature_importance() -> Tuple[Dict[str, Any], int]:
     if not os.path.exists(METRICS_PATH):
         return jsonify({"error": "Model not trained yet."}), 404
     with open(METRICS_PATH) as f:

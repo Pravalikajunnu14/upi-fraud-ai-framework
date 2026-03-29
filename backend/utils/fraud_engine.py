@@ -13,7 +13,9 @@ import sys
 import os
 import hashlib
 import json
+import threading
 from collections import OrderedDict
+from typing import Dict
 
 # Allow importing from ml/ folder (two levels up from backend/utils/)
 ML_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml"))
@@ -25,14 +27,15 @@ from fraud_predictor import FraudPredictor  # noqa: E402
 # Single shared instance — loaded lazily on first .predict() call
 predictor = FraudPredictor()
 
-# ── Simple LRU prediction cache ────────────────────────────────
-CAHE_MAX_SIZE = 256
+# ── Simple LRU prediction cache with thread-safety ────────────────────────────────
+CACHE_MAX_SIZE = 256
 _cache: OrderedDict = OrderedDict()
+_cache_lock = threading.Lock()  # Protect cache from race conditions
 _cache_hits   = 0
 _cache_misses = 0
 
 
-def _cache_key(txn: dict) -> str:
+def _cache_key(txn: Dict) -> str:
     """Create a stable hash key from transaction features."""
     key_fields = {
         k: round(v, 2) if isinstance(v, float) else v
@@ -44,7 +47,7 @@ def _cache_key(txn: dict) -> str:
     return hashlib.md5(json.dumps(key_fields, sort_keys=True).encode()).hexdigest()
 
 
-def run_fraud_check(txn: dict) -> dict:
+def run_fraud_check(txn: Dict) -> Dict:
     """
     Run fraud detection on a transaction dict with LRU cache.
 
@@ -71,18 +74,21 @@ def run_fraud_check(txn: dict) -> dict:
         )
 
     key = _cache_key(txn)
-    if key in _cache:
-        _cache.move_to_end(key)
-        _cache_hits += 1
-        return _cache[key]
+    with _cache_lock:
+        if key in _cache:
+            _cache.move_to_end(key)
+            _cache_hits += 1
+            return _cache[key]
 
-    result = predictor.predict(txn)
-    _cache[key] = result
-    if len(_cache) > CAHE_MAX_SIZE:
-        _cache.popitem(last=False)
-    _cache_misses += 1
-    return result
+        result = predictor.predict(txn)
+        _cache[key] = result
+        if len(_cache) > CACHE_MAX_SIZE:
+            _cache.popitem(last=False)
+        _cache_misses += 1
+        return result
 
 
-def cache_stats() -> dict:
-    return {"hits": _cache_hits, "misses": _cache_misses, "size": len(_cache)}
+def cache_stats() -> Dict:
+    """Return current cache statistics (thread-safe)."""
+    with _cache_lock:
+        return {"hits": _cache_hits, "misses": _cache_misses, "size": len(_cache)}

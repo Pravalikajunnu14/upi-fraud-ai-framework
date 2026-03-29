@@ -41,7 +41,7 @@ async function loadStats() {
         const data = await res.json();
 
         setText("stat-total", data.total_transactions.toLocaleString());
-        setText("stat-fraud", data.fraud_detected.toLocaleString());
+        setText("stat-fraud", (data.fraud_count || data.fraud_detected || 0).toLocaleString());
         setText("stat-rate", data.fraud_rate + "%");
         setText("stat-blocked", data.blocked_transactions.toLocaleString());
         setText("stat-alerts", data.open_alerts.toLocaleString());
@@ -49,11 +49,14 @@ async function loadStats() {
 
         // Update donut + risk charts inline
         const total = data.total_transactions;
-        updateDonutChart(data.fraud_detected, total - data.fraud_detected);
+        const fraudCount = data.fraud_count || data.fraud_detected || 0;
+        updateDonutChart(fraudCount, total - fraudCount);
 
         const rd = data.risk_distribution || {};
         updateRiskChart(rd.Low || 0, rd.Medium || 0, rd.High || 0);
-    } catch { }
+    } catch (err) {
+        console.error("Error loading stats:", err);
+    }
 }
 
 /* ── Live Feed Table ───────────────────────────────────────────── */
@@ -62,8 +65,10 @@ async function loadFeed() {
         const res = await authFetch("/api/dashboard/feed");
         if (!res.ok) return;
         const data = await res.json();
-        renderFeedRows(data.feed || []);
-    } catch { }
+        renderFeedRows(data.transactions || data.feed || []);
+    } catch (err) {
+        console.error("Error loading feed:", err);
+    }
 }
 
 function renderFeedRows(rows) {

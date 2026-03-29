@@ -31,17 +31,22 @@ def init_db():
     conn.commit()
     conn.close()
     print(f"[OK] Database initialised at: {DB_PATH}")
-    _seed_default_users()
+    # Only seed test users if explicitly enabled (SETUP_MODE=1)
+    if os.getenv("SETUP_MODE") == "1":
+        _seed_demo_users()
+    else:
+        _check_admin_exists()
 
 
-def _seed_default_users():
-    """Create default admin and user accounts if no users exist."""
+def _seed_demo_users():
+    """Create demo admin and user accounts (ONLY IN SETUP MODE). Called once on first run."""
     conn = get_db()
     count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     if count == 0:
+        print("\n⚠️  SETUP_MODE=1 detected. Creating demo accounts...")
         defaults = [
-            ("admin", "admin123", "junnupravalika59@gmail.com", "admin"),
-            ("user",  "user123",  "junnupravalika59@gmail.com",  "user"),
+            ("admin", "changeme_admin123", "admin@example.com", "admin"),
+            ("user",  "changeme_user123",  "user@example.com",  "user"),
         ]
         for username, password, email, role in defaults:
             hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -50,7 +55,21 @@ def _seed_default_users():
                 (username, hashed, email, role)
             )
         conn.commit()
-        print("[OK] Default accounts created: admin/admin123  and  user/user123")
+        print(f"✓ Demo accounts created:")
+        print(f"  - admin / changeme_admin123 (role: admin)")
+        print(f"  - user / changeme_user123 (role: user)")
+        print(f"\n🔐 ACTION REQUIRED: Change these passwords immediately in production!")
+    conn.close()
+
+
+def _check_admin_exists():
+    """Verify at least one admin exists; warn if creating first users manually."""
+    conn = get_db()
+    count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    if count == 0:
+        print("\n⚠️  No users in database. To create initial admin account, run:")
+        print("   SETUP_MODE=1 python app.py")
+        print("   Then change default passwords immediately.")
     conn.close()
 
 
